@@ -1,0 +1,79 @@
+graph TB
+    subgraph "Mobile Client - React Native Android"
+        UI[User Interface Layer]
+        UI --> Voice[Voice Interface<br/>10+ Regional Languages]
+        UI --> Camera[Camera Hazard<br/>Detection]
+        UI --> JHA[JHA Templates<br/>& Checklists]
+        UI --> Compliance[Compliance<br/>Tracker]
+        
+        Voice --> AppService[Application Service Layer]
+        Camera --> AppService
+        JHA --> AppService
+        Compliance --> AppService
+        
+        AppService --> VoiceProc[Voice Processor<br/>DeepSpeech + eSpeak]
+        AppService --> HazardAnalyzer[Hazard Analyzer<br/>MobileNetV3]
+        AppService --> QueryEngine[Query Engine<br/>RAG + Cached Embeddings]
+        AppService --> RecEngine[Recommendation<br/>Engine]
+        
+        VoiceProc --> LocalData[Local Data Layer]
+        HazardAnalyzer --> LocalData
+        QueryEngine --> LocalData
+        RecEngine --> LocalData
+        
+        LocalData --> SQLite[(SQLite DB<br/>User Data)]
+        LocalData --> Models[Cached ML Models<br/>~50MB]
+        LocalData --> Embeddings[Embedding Cache<br/>~30MB]
+        LocalData --> KG[Knowledge Graph<br/>Cache ~5MB]
+        
+        LocalData --> SyncEngine[Bidirectional<br/>Sync Engine]
+    end
+    
+    SyncEngine -->|When Online| AppSync[AWS AppSync<br/>GraphQL + Offline]
+    
+    subgraph "AWS Cloud Services"
+        AppSync --> Lambda[Lambda Functions]
+        
+        Lambda --> SyncHandler[Sync Handler]
+        Lambda --> QueryProc[Query Processor]
+        Lambda --> ModelUpdater[Model Updater]
+        Lambda --> Analytics[Analytics<br/>Aggregator]
+        
+        SyncHandler --> DynamoDB[(DynamoDB<br/>User Data)]
+        QueryProc --> Bedrock[AWS Bedrock<br/>Claude 3 Haiku<br/>LLM/RAG]
+        QueryProc --> Kendra[Amazon Kendra<br/>RAG Index]
+        QueryProc --> Neptune[(AWS Neptune<br/>Knowledge Graph)]
+        
+        ModelUpdater --> S3[Amazon S3<br/>Models & Assets]
+        
+        Analytics --> CloudWatch[CloudWatch<br/>Monitoring]
+        
+        HazardAnalyzer -.->|Complex Cases| Rekognition[Amazon<br/>Rekognition]
+        VoiceProc -.->|Model Updates| Transcribe[Amazon<br/>Transcribe]
+        VoiceProc -.->|Phrase Cache| Polly[Amazon<br/>Polly]
+        
+        S3 --> CloudFront[CloudFront CDN<br/>India Edge]
+        CloudFront -.->|Model Downloads| Models
+        
+        Neptune --> GraphCache[Graph Subgraph<br/>Export]
+        GraphCache -.-> KG
+        
+        Kendra --> EmbeddingExport[Top 1000<br/>Embeddings]
+        EmbeddingExport -.-> Embeddings
+    end
+    
+    subgraph "External Integration"
+        Lambda --> GovAPI[Government APIs<br/>Schemes & Weather]
+        Lambda --> AgriAPI[Agricultural APIs<br/>Market Prices]
+    end
+    
+    style UI fill:#e1f5ff
+    style LocalData fill:#fff4e1
+    style SyncEngine fill:#f0e1ff
+    style AppSync fill:#e1ffe1
+    style Lambda fill:#ffe1e1
+    style DynamoDB fill:#ffe1f0
+    style Neptune fill:#ffe1f0
+    style S3 fill:#e1f0ff
+    style Bedrock fill:#ffe8cc
+    style Kendra fill:#ffe8cc
