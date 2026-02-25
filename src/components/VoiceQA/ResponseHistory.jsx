@@ -1,6 +1,6 @@
 import ResponseCard from './ResponseCard'
 
-export default function ResponseHistory({ history, onSpeak, speakingIndex, onStop }) {
+export default function ResponseHistory({ history, onSpeak, speakingIndex, onStop, lang }) {
   if (!history.length) return null
 
   return (
@@ -13,6 +13,7 @@ export default function ResponseHistory({ history, onSpeak, speakingIndex, onSto
           onSpeak={onSpeak}
           isSpeaking={speakingIndex === i}
           onStop={onStop}
+          lang={lang}
         />
       ))}
     </div>

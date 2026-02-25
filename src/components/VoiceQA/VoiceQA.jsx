@@ -4,6 +4,8 @@ import useSpeechSynthesis from '../../hooks/useSpeechSynthesis'
 import useOnlineStatus from '../../hooks/useOnlineStatus'
 import { askSafetyQuestion } from '../../services/aws/bedrockService'
 import { getSampleQuestions } from '../../services/aws/mockData'
+import { saveQAToCache, searchCache, clearOldCache, getStorageUsage } from '../../services/offline/cacheService'
+import { logQuestionAsked, logResponseReceived, logError } from '../../utils/analytics'
 import LanguageToggle from './LanguageToggle'
 import QuestionChips from './QuestionChips'
 import ResponseHistory from './ResponseHistory'
@@ -25,6 +27,9 @@ function saveHistory(history) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)))
 }
 
+// Clean old cache on first load
+clearOldCache()
+
 export default function VoiceQA() {
   const [lang, setLang] = useState(() => localStorage.getItem(LANG_KEY) || 'hi-IN')
   const [textInput, setTextInput] = useState('')
@@ -33,23 +38,106 @@ export default function VoiceQA() {
   const [speakingIndex, setSpeakingIndex] = useState(-1)
   const isOnline = useOnlineStatus()
   const scrollRef = useRef(null)
+  const autoSpeakRef = useRef(null)
+
+  const tts = useSpeechSynthesis({ lang })
 
   const handleQuestionSubmit = useCallback(
-    async (question) => {
+    async (question, source = 'text') => {
       if (!question.trim()) return
 
+      const trimmed = question.trim()
       setTextInput('')
       setStatus('thinking')
 
-      try {
-        const { answer, sources, confidence, error: isError } = await askSafetyQuestion(question, lang)
+      const startTime = Date.now()
+      const langKey = lang.startsWith('hi') ? 'hi' : 'en'
+
+      logQuestionAsked({ question: trimmed, language: langKey, isOnline, source })
+
+      // --- Offline path: try cache first ---
+      if (!isOnline) {
+        const cached = searchCache(trimmed)
+        if (cached) {
+          const entry = {
+            question: trimmed,
+            answer: cached.answer,
+            sources: cached.sources || [],
+            confidence: cached.confidence || 0,
+            fromCache: true,
+            timestamp: Date.now(),
+          }
+          logResponseReceived({
+            question: trimmed,
+            responseTimeMs: Date.now() - startTime,
+            language: langKey,
+            isOnline: false,
+            fromCache: true,
+            confidence: cached.confidence,
+          })
+
+          setHistory((prev) => {
+            const next = [entry, ...prev].slice(0, MAX_HISTORY)
+            saveHistory(next)
+            return next
+          })
+          setStatus('idle')
+
+          // Auto-read cached response
+          autoSpeakRef.current = cached.answer
+          return
+        }
+
+        // No cache match while offline
+        const offlineMsg = langKey === 'hi'
+          ? 'आप ऑफ़लाइन हैं। नए सवालों के लिए इंटरनेट से कनेक्ट करें।'
+          : "You're offline. Connect to the internet to ask new questions."
+
         const entry = {
-          question: question.trim(),
-          answer,
-          sources: sources || [],
-          confidence: confidence || 0,
-          isError: !!isError,
+          question: trimmed,
+          answer: offlineMsg,
+          sources: [],
+          confidence: 0,
+          isError: true,
+          isOffline: true,
           timestamp: Date.now(),
+        }
+
+        logError({ action: 'question_offline_no_cache', error: 'No cached answer', language: langKey })
+
+        setHistory((prev) => {
+          const next = [entry, ...prev].slice(0, MAX_HISTORY)
+          saveHistory(next)
+          return next
+        })
+        setStatus('idle')
+        return
+      }
+
+      // --- Online path: call bedrockService ---
+      try {
+        const result = await askSafetyQuestion(trimmed, lang)
+        const entry = {
+          question: trimmed,
+          answer: result.answer,
+          sources: result.sources || [],
+          confidence: result.confidence || 0,
+          isError: !!result.error,
+          timestamp: Date.now(),
+        }
+
+        logResponseReceived({
+          question: trimmed,
+          responseTimeMs: Date.now() - startTime,
+          language: langKey,
+          isOnline: true,
+          fromCache: false,
+          confidence: result.confidence,
+        })
+
+        // Cache successful responses for offline use
+        if (!result.error) {
+          saveQAToCache(trimmed, result.answer, langKey, result.sources, result.confidence)
         }
 
         setHistory((prev) => {
@@ -57,8 +145,13 @@ export default function VoiceQA() {
           saveHistory(next)
           return next
         })
-      } catch {
-        // Should not reach here — bedrockService handles errors internally
+
+        // Auto-read the response
+        if (!result.error) {
+          autoSpeakRef.current = result.answer
+        }
+      } catch (err) {
+        logError({ action: 'question_submit', error: err, language: langKey })
       } finally {
         setStatus('idle')
         setTimeout(() => {
@@ -66,16 +159,26 @@ export default function VoiceQA() {
         }, 100)
       }
     },
-    [lang]
+    [lang, isOnline]
   )
+
+  // Auto-speak new responses
+  useEffect(() => {
+    if (autoSpeakRef.current && status === 'idle' && !tts.isSpeaking) {
+      const text = autoSpeakRef.current
+      autoSpeakRef.current = null
+      setTimeout(() => {
+        setSpeakingIndex(0)
+        tts.speak(text)
+      }, 300)
+    }
+  }, [status, tts])
 
   const speech = useSpeechRecognition({
     lang,
-    onResult: handleQuestionSubmit,
+    onResult: (text) => handleQuestionSubmit(text, 'voice'),
     silenceTimeout: 2000,
   })
-
-  const tts = useSpeechSynthesis({ lang })
 
   // Update status from speech recognition
   useEffect(() => {
@@ -107,13 +210,13 @@ export default function VoiceQA() {
   const handleTextSubmit = (e) => {
     e.preventDefault()
     if (textInput.trim()) {
-      handleQuestionSubmit(textInput)
+      handleQuestionSubmit(textInput, 'text')
     }
   }
 
   const handleChipSelect = (question) => {
     setTextInput(question)
-    handleQuestionSubmit(question)
+    handleQuestionSubmit(question, 'chip')
   }
 
   const handleSpeak = (text) => {
@@ -133,6 +236,7 @@ export default function VoiceQA() {
 
   const isHindi = lang.startsWith('hi')
   const sampleQuestions = getSampleQuestions(lang)
+  const storageInfo = getStorageUsage()
 
   return (
     <div className="space-y-5 pb-4">
@@ -147,7 +251,8 @@ export default function VoiceQA() {
           </p>
         </div>
         {!isOnline && (
-          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">
+          <span className="flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
             Offline
           </span>
         )}
@@ -285,20 +390,26 @@ export default function VoiceQA() {
           onSpeak={handleSpeak}
           speakingIndex={speakingIndex}
           onStop={handleStopSpeak}
+          lang={lang}
         />
       </div>
 
-      {/* Clear History */}
+      {/* Footer: Clear History + Cache Info */}
       {history.length > 0 && (
-        <button
-          onClick={() => {
-            setHistory([])
-            saveHistory([])
-          }}
-          className="w-full py-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
-        >
-          {isHindi ? 'इतिहास साफ़ करें' : 'Clear history'}
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => {
+              setHistory([])
+              saveHistory([])
+            }}
+            className="py-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
+          >
+            {isHindi ? 'इतिहास साफ़ करें' : 'Clear history'}
+          </button>
+          <span className="text-[10px] text-gray-400">
+            Cache: {storageInfo.itemCount} items ({storageInfo.formatted})
+          </span>
+        </div>
       )}
     </div>
   )
