@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import Layout from './components/common/Layout'
 import HomePage from './components/HomePage'
 import VoiceQA from './components/VoiceQA/VoiceQA'
@@ -8,15 +9,17 @@ import './App.css'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<HomePage />} />
-          <Route path="voice-qa" element={<VoiceQA />} />
-          <Route path="hazard-detection" element={<HazardDetection />} />
-          <Route path="jha-checklist" element={<JHAChecklist />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="voice-qa" element={<VoiceQA />} />
+            <Route path="hazard-detection" element={<HazardDetection />} />
+            <Route path="jha-checklist" element={<JHAChecklist />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
