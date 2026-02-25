@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Layout from './components/common/Layout'
-import Home from './components/Home'
+import HomePage from './components/HomePage'
 import VoiceQA from './components/VoiceQA/VoiceQA'
 import HazardDetection from './components/HazardDetection/HazardDetection'
 import JHAChecklist from './components/JHAChecklist/JHAChecklist'
@@ -11,10 +11,10 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="voice" element={<VoiceQA />} />
-          <Route path="hazard" element={<HazardDetection />} />
-          <Route path="checklist" element={<JHAChecklist />} />
+          <Route index element={<HomePage />} />
+          <Route path="voice-qa" element={<VoiceQA />} />
+          <Route path="hazard-detection" element={<HazardDetection />} />
+          <Route path="jha-checklist" element={<JHAChecklist />} />
         </Route>
       </Routes>
     </BrowserRouter>

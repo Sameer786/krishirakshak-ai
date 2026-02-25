@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create vite@latest . -- --template react)",
+      "Bash(npm install)",
+      "Bash(npm install axios react-router-dom)",
+      "Bash(npm install -D tailwindcss @tailwindcss/vite)",
+      "Bash(npx tailwindcss --help)",
+      "Bash(node -e \"console.log\\(require\\(''tailwindcss/package.json''\\).version\\)\")",
+      "Bash(npm run build)",
+      "Bash(timeout 10 npm run dev)",
+      "Bash(git add .env.example .gitignore eslint.config.js index.html package-lock.json package.json public/ src/ vite.config.js)",
+      "Bash(git commit:*)",
+      "Bash(git push origin claude/laughing-brown)",
+      "Bash(git checkout main)",
+      "Bash(git add -A)"
+    ]
+  }
+}
