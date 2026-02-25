@@ -15,7 +15,15 @@
       "Bash(git checkout main)",
       "Bash(git add -A)",
       "Bash(git merge claude/laughing-brown --no-edit)",
-      "Bash(git push origin main)"
+      "Bash(git push origin main)",
+      "Bash(git add src/services/offline/cacheService.js src/utils/analytics.js src/components/VoiceQA/ResponseCard.jsx src/components/VoiceQA/ResponseHistory.jsx src/components/VoiceQA/VoiceQA.jsx)",
+      "Bash(git add lambda/ask-safety-question/index.mjs lambda/ask-safety-question/package.json DEPLOY_LAMBDA.md)",
+      "Bash(git rm DEPLOY_LAMBDA.md)",
+      "Bash(git add lambda/analyze-hazards/index.mjs lambda/analyze-hazards/package.json lambda/DEPLOY.md)",
+      "Bash(git add src/utils/imageUtils.js src/components/HazardDetection/HazardDetection.jsx)",
+      "Bash(git add src/services/aws/rekognitionService.js src/components/HazardDetection/HazardDetection.jsx)",
+      "Bash(git add src/components/HazardDetection/HazardResults.jsx src/components/HazardDetection/HazardDetection.jsx)",
+      "Bash(timeout 8 npx vite --host)"
     ]
   }
 }
