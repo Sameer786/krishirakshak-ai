@@ -13,7 +13,9 @@
       "Bash(git commit:*)",
       "Bash(git push origin claude/laughing-brown)",
       "Bash(git checkout main)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(git merge claude/laughing-brown --no-edit)",
+      "Bash(git push origin main)"
     ]
   }
 }
