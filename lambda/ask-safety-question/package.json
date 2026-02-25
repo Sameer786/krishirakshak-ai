@@ -1,0 +1,9 @@
+{
+  "name": "ask-safety-question",
+  "version": "1.0.0",
+  "description": "KrishiRakshak Lambda — agricultural safety Q&A via Bedrock Claude Haiku",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.700.0"
+  }
+}
