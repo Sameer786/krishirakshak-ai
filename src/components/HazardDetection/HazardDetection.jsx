@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { compressImage, validateImageFile, canvasToBase64 } from '../../utils/imageUtils'
+import { analyzeHazards } from '../../services/aws/rekognitionService'
 
 // UI states
 const STATE = {
@@ -109,35 +110,28 @@ export default function HazardDetection() {
   }, [stopCamera])
 
   // -----------------------------------------------------------
-  // Analyze (placeholder — will wire to API in next prompt)
+  // Analyze — calls rekognitionService (or demo mock)
   // -----------------------------------------------------------
   const handleAnalyze = useCallback(async () => {
     if (!imageData) return
     setUiState(STATE.ANALYZING)
     setError(null)
 
-    // TODO: Replace with actual API call in Prompt 3.2
-    // Simulate analysis delay for now
-    await new Promise((r) => setTimeout(r, 2000))
+    try {
+      const data = await analyzeHazards(imageData)
 
-    setResults({
-      hazards: [
-        {
-          type: 'equipment_general',
-          severity: 'LOW',
-          confidence: 0.82,
-          description: 'Agricultural equipment — check maintenance schedule',
-          recommendation: 'Inspect before use. Store properly after use.',
-          hindiDescription: 'सामान्य कृषि उपकरण — रखरखाव जांचें',
-          hindiRecommendation: 'उपयोग से पहले जांचें। उपयोग के बाद ठीक से रखें।',
-        },
-      ],
-      overallRisk: 'LOW',
-      hazardCount: 1,
-      detectedLabels: [],
-      analyzedAt: new Date().toISOString(),
-    })
-    setUiState(STATE.RESULTS)
+      if (data.error) {
+        setError(data.errorMessage || 'Analysis failed. Please try again.')
+        setUiState(STATE.IMAGE_CAPTURED)
+        return
+      }
+
+      setResults(data)
+      setUiState(STATE.RESULTS)
+    } catch {
+      setError('Something went wrong during analysis. Please try again.')
+      setUiState(STATE.IMAGE_CAPTURED)
+    }
   }, [imageData])
 
   // -----------------------------------------------------------
