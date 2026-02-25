@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { compressImage, validateImageFile, canvasToBase64 } from '../../utils/imageUtils'
 import { analyzeHazards } from '../../services/aws/rekognitionService'
+import HazardResults from './HazardResults'
 
 // UI states
 const STATE = {
@@ -302,121 +303,6 @@ export default function HazardDetection() {
     </div>
   )
 
-  // RESULTS state — hazard list
-  const renderResults = () => {
-    if (!results) return null
-
-    const sevColor = {
-      CRITICAL: 'bg-red-100 text-red-700 border-red-200',
-      HIGH: 'bg-orange-100 text-orange-700 border-orange-200',
-      MEDIUM: 'bg-amber-100 text-amber-700 border-amber-200',
-      LOW: 'bg-green-100 text-green-700 border-green-200',
-      NONE: 'bg-gray-100 text-gray-600 border-gray-200',
-    }
-
-    const riskColor = {
-      CRITICAL: 'bg-red-500',
-      HIGH: 'bg-orange-500',
-      MEDIUM: 'bg-amber-500',
-      LOW: 'bg-green-500',
-      NONE: 'bg-gray-400',
-    }
-
-    return (
-      <div className="space-y-4">
-        {/* Image with risk badge */}
-        <div className="relative bg-gray-100 rounded-2xl overflow-hidden">
-          <img
-            src={imageData}
-            alt="Analyzed"
-            className="w-full object-contain max-h-64"
-          />
-          <div className="absolute top-3 left-3">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${sevColor[results.overallRisk] || sevColor.NONE}`}>
-              <span className={`w-2 h-2 rounded-full ${riskColor[results.overallRisk] || riskColor.NONE}`} />
-              {results.overallRisk} RISK
-            </span>
-          </div>
-        </div>
-
-        {/* Summary */}
-        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-gray-800">Detected Hazards</h3>
-            <span className="text-xs text-gray-400">
-              {results.hazardCount} found
-            </span>
-          </div>
-
-          {results.hazards.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-green-600 font-medium">No hazards detected</p>
-              <p className="text-xs text-gray-400 mt-1">The image appears safe</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {results.hazards.map((hazard, i) => (
-                <div
-                  key={i}
-                  className={`p-3 rounded-lg border ${sevColor[hazard.severity] || sevColor.LOW}`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${sevColor[hazard.severity]}`}>
-                          {hazard.severity}
-                        </span>
-                        <span className="text-[10px] text-gray-400">
-                          {Math.round(hazard.confidence * 100)}% confident
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-800">{hazard.description}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{hazard.hindiDescription}</p>
-                      <div className="mt-2 pt-2 border-t border-gray-200/50">
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Action:</span> {hazard.recommendation}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{hazard.hindiRecommendation}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleRetake}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-medium active:scale-[0.98] transition-transform"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path d="M12 9a3.75 3.75 0 100 7.5A3.75 3.75 0 0012 9z" />
-              <path fillRule="evenodd" d="M9.344 3.071a49.52 49.52 0 015.312 0c.967.052 1.83.585 2.332 1.39l.821 1.317c.24.383.645.643 1.11.71.386.054.77.113 1.152.177 1.432.239 2.429 1.493 2.429 2.909V18a3 3 0 01-3 3H4.5a3 3 0 01-3-3V9.574c0-1.416.997-2.67 2.429-2.909.382-.064.766-.123 1.151-.178a1.56 1.56 0 001.11-.71l.822-1.315a2.942 2.942 0 012.332-1.39zM6.75 12.75a5.25 5.25 0 1110.5 0 5.25 5.25 0 01-10.5 0z" clipRule="evenodd" />
-            </svg>
-            New Scan
-          </button>
-          <button
-            onClick={() => {/* TODO: Wire to Voice QA for advice */}}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold shadow-md active:scale-[0.98] transition-transform"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-              <path fillRule="evenodd" d="M10 2c-2.236 0-4.43.18-6.57.524C1.993 2.755 1 3.975 1 5.389v5.222c0 1.414.993 2.634 2.43 2.865.932.15 1.873.264 2.82.336.375.03.673.31.748.682l.6 2.98a.75.75 0 001.17.351l3.028-2.42c.264-.212.603-.327.95-.354a39.78 39.78 0 002.684-.243c1.437-.231 2.43-1.451 2.43-2.865V5.389c0-1.414-.993-2.634-2.43-2.865A41.289 41.289 0 0010 2z" clipRule="evenodd" />
-            </svg>
-            Get Advice
-          </button>
-        </div>
-
-        {/* Timestamp */}
-        <p className="text-center text-[10px] text-gray-400">
-          Analyzed at {new Date(results.analyzedAt).toLocaleTimeString()}
-        </p>
-      </div>
-    )
-  }
-
   // -----------------------------------------------------------
   // Main render
   // -----------------------------------------------------------
@@ -448,7 +334,9 @@ export default function HazardDetection() {
       {uiState === STATE.CAMERA_ACTIVE && renderCamera()}
       {uiState === STATE.IMAGE_CAPTURED && renderCaptured()}
       {uiState === STATE.ANALYZING && renderAnalyzing()}
-      {uiState === STATE.RESULTS && renderResults()}
+      {uiState === STATE.RESULTS && (
+        <HazardResults results={results} imageData={imageData} onNewScan={handleRetake} />
+      )}
 
       {/* Hidden canvas for capture */}
       <canvas ref={canvasRef} className="hidden" />
