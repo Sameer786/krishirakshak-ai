@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <circle cx="96" cy="96" r="96" fill="#16a34a"/>
+  <!-- Wheat stalk -->
+  <g fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Main stem -->
+    <line x1="96" y1="155" x2="96" y2="55"/>
+    <!-- Wheat grains - left -->
+    <ellipse cx="82" cy="62" rx="8" ry="14" fill="white" stroke="none" transform="rotate(-15 82 62)"/>
+    <ellipse cx="78" cy="82" rx="7" ry="13" fill="white" stroke="none" transform="rotate(-20 78 82)"/>
+    <ellipse cx="80" cy="102" rx="6" ry="12" fill="white" stroke="none" transform="rotate(-18 80 102)"/>
+    <!-- Wheat grains - right -->
+    <ellipse cx="110" cy="62" rx="8" ry="14" fill="white" stroke="none" transform="rotate(15 110 62)"/>
+    <ellipse cx="114" cy="82" rx="7" ry="13" fill="white" stroke="none" transform="rotate(20 114 82)"/>
+    <ellipse cx="112" cy="102" rx="6" ry="12" fill="white" stroke="none" transform="rotate(18 112 102)"/>
+    <!-- Grain connectors -->
+    <line x1="96" y1="62" x2="82" y2="62"/>
+    <line x1="96" y1="82" x2="78" y2="82"/>
+    <line x1="96" y1="102" x2="80" y2="102"/>
+    <line x1="96" y1="62" x2="110" y2="62"/>
+    <line x1="96" y1="82" x2="114" y2="82"/>
+    <line x1="96" y1="102" x2="112" y2="102"/>
+    <!-- Top grain -->
+    <ellipse cx="96" cy="45" rx="7" ry="14" fill="white" stroke="none"/>
+  </g>
+  <!-- Shield accent -->
+  <path d="M96 28 L120 42 L120 70 Q120 90 96 100 Q72 90 72 70 L72 42 Z" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+</svg>

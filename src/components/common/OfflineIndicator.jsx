@@ -1,7 +1,7 @@
 import useOnlineStatus from '../../hooks/useOnlineStatus'
 
 export default function OfflineIndicator() {
-  const isOnline = useOnlineStatus()
+  const { isOnline } = useOnlineStatus()
 
   return (
     <div className="flex items-center justify-center gap-2 py-2 px-3">

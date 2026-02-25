@@ -82,7 +82,7 @@ export default function HazardResults({ results, imageData, onNewScan }) {
   const [saving, setSaving] = useState(false)
 
   const navigate = useNavigate()
-  const isOnline = useOnlineStatus()
+  const { isOnline } = useOnlineStatus()
   const tts = useSpeechSynthesis({ lang: 'en-IN' })
 
   // Toggle expand a hazard card

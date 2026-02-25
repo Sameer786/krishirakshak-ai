@@ -4,7 +4,7 @@ import useOnlineStatus from '../../hooks/useOnlineStatus'
 export default function Header() {
   const location = useLocation()
   const navigate = useNavigate()
-  const isOnline = useOnlineStatus()
+  const { isOnline } = useOnlineStatus()
   const isHome = location.pathname === '/'
 
   return (

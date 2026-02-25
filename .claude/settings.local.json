@@ -23,7 +23,8 @@
       "Bash(git add src/utils/imageUtils.js src/components/HazardDetection/HazardDetection.jsx)",
       "Bash(git add src/services/aws/rekognitionService.js src/components/HazardDetection/HazardDetection.jsx)",
       "Bash(git add src/components/HazardDetection/HazardResults.jsx src/components/HazardDetection/HazardDetection.jsx)",
-      "Bash(timeout 8 npx vite --host)"
+      "Bash(timeout 8 npx vite --host)",
+      "Bash(git add src/services/offline/storageService.js)"
     ]
   }
 }

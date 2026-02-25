@@ -36,7 +36,7 @@ export default function VoiceQA() {
   const [status, setStatus] = useState('idle') // idle | listening | thinking | speaking
   const [history, setHistory] = useState(loadHistory)
   const [speakingIndex, setSpeakingIndex] = useState(-1)
-  const isOnline = useOnlineStatus()
+  const { isOnline } = useOnlineStatus()
   const scrollRef = useRef(null)
   const autoSpeakRef = useRef(null)
 
