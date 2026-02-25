@@ -29,8 +29,33 @@ export default function ResponseCard({ item, onSpeak, isSpeaking, onStop }) {
 
       {/* Answer */}
       <div className="px-4 py-3">
-        <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{item.answer}</p>
+        <p className={`text-sm whitespace-pre-line leading-relaxed ${item.isError ? 'text-red-600' : 'text-gray-700'}`}>
+          {item.answer}
+        </p>
       </div>
+
+      {/* Sources & Confidence */}
+      {item.sources?.length > 0 && (
+        <div className="px-4 pb-2 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] text-gray-400">Sources:</span>
+          {item.sources.map((s) => (
+            <span key={s} className="text-[10px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded">
+              {s}
+            </span>
+          ))}
+          {typeof item.confidence === 'number' && item.confidence > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+              item.confidence >= 0.9
+                ? 'bg-primary-50 text-primary-dark'
+                : item.confidence >= 0.7
+                ? 'bg-amber-50 text-amber-700'
+                : 'bg-gray-50 text-gray-500'
+            }`}>
+              {Math.round(item.confidence * 100)}% confident
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">

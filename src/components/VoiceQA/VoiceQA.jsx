@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import useSpeechRecognition from '../../hooks/useSpeechRecognition'
 import useSpeechSynthesis from '../../hooks/useSpeechSynthesis'
 import useOnlineStatus from '../../hooks/useOnlineStatus'
-import { getMockResponse, getSampleQuestions } from '../../services/api/mockResponses'
+import { askSafetyQuestion } from '../../services/aws/bedrockService'
+import { getSampleQuestions } from '../../services/aws/mockData'
 import LanguageToggle from './LanguageToggle'
 import QuestionChips from './QuestionChips'
 import ResponseHistory from './ResponseHistory'
@@ -34,30 +35,36 @@ export default function VoiceQA() {
   const scrollRef = useRef(null)
 
   const handleQuestionSubmit = useCallback(
-    (question) => {
+    async (question) => {
       if (!question.trim()) return
 
       setTextInput('')
       setStatus('thinking')
 
-      // Simulate API delay
-      setTimeout(() => {
-        const { answer } = getMockResponse(question, lang)
-        const entry = { question: question.trim(), answer, timestamp: Date.now() }
+      try {
+        const { answer, sources, confidence, error: isError } = await askSafetyQuestion(question, lang)
+        const entry = {
+          question: question.trim(),
+          answer,
+          sources: sources || [],
+          confidence: confidence || 0,
+          isError: !!isError,
+          timestamp: Date.now(),
+        }
 
         setHistory((prev) => {
           const next = [entry, ...prev].slice(0, MAX_HISTORY)
           saveHistory(next)
           return next
         })
-
+      } catch {
+        // Should not reach here — bedrockService handles errors internally
+      } finally {
         setStatus('idle')
-
-        // Scroll to response
         setTimeout(() => {
           scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 100)
-      }, 800 + Math.random() * 700)
+      }
     },
     [lang]
   )
