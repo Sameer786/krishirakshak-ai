@@ -1,0 +1,9 @@
+{
+  "name": "analyze-hazards",
+  "version": "1.0.0",
+  "description": "KrishiRakshak Lambda — agricultural hazard detection via Rekognition",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.700.0"
+  }
+}
