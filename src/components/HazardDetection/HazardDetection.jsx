@@ -23,6 +23,7 @@ export default function HazardDetection() {
   const streamRef = useRef(null)
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
+  const isMountedRef = useRef(true)
 
   // -----------------------------------------------------------
   // Camera
@@ -37,7 +38,11 @@ export default function HazardDetection() {
     }
   }, [])
 
-  const startCamera = useCallback(async () => {
+  const startCamera = useCallback(async (e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     setError(null)
     setCameraError(null)
 
@@ -47,12 +52,19 @@ export default function HazardDetection() {
         audio: false,
       })
 
+      // Guard against unmount during async getUserMedia
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
+
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
       setUiState(STATE.CAMERA_ACTIVE)
     } catch (err) {
+      if (!isMountedRef.current) return
       let msg = 'Camera not available. Please upload an image instead.'
       if (err.name === 'NotAllowedError') {
         msg = 'Camera permission denied. Please allow camera access in your browser settings, or upload an image.'
@@ -63,10 +75,22 @@ export default function HazardDetection() {
     }
   }, [])
 
-  // Clean up camera on unmount
-  useEffect(() => stopCamera, [stopCamera])
+  // Clean up camera + isMounted on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
+    }
+  }, [])
 
-  const capturePhoto = useCallback(() => {
+  const capturePhoto = useCallback((e) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     const video = videoRef.current
     if (!video) return
 
@@ -102,10 +126,12 @@ export default function HazardDetection() {
 
     try {
       const compressed = await compressImage(file, 1920, 0.8)
+      if (!isMountedRef.current) return
       setImageData(compressed.base64)
       stopCamera()
       setUiState(STATE.IMAGE_CAPTURED)
     } catch {
+      if (!isMountedRef.current) return
       setError('Failed to process image. Please try a different file.')
     }
   }, [stopCamera])
@@ -121,6 +147,8 @@ export default function HazardDetection() {
     try {
       const data = await analyzeHazards(imageData)
 
+      if (!isMountedRef.current) return
+
       if (data.error) {
         setError(data.errorMessage || 'Analysis failed. Please try again.')
         setUiState(STATE.IMAGE_CAPTURED)
@@ -130,6 +158,7 @@ export default function HazardDetection() {
       setResults(data)
       setUiState(STATE.RESULTS)
     } catch {
+      if (!isMountedRef.current) return
       setError('Something went wrong during analysis. Please try again.')
       setUiState(STATE.IMAGE_CAPTURED)
     }
@@ -154,6 +183,7 @@ export default function HazardDetection() {
     <div className="space-y-4">
       {/* Take Photo */}
       <button
+        type="button"
         onClick={startCamera}
         className="w-full flex items-center justify-center gap-3 py-5 bg-primary text-white rounded-2xl text-lg font-semibold shadow-lg active:scale-[0.98] transition-transform"
       >
@@ -166,6 +196,7 @@ export default function HazardDetection() {
 
       {/* Upload */}
       <button
+        type="button"
         onClick={() => fileInputRef.current?.click()}
         className="w-full flex items-center justify-center gap-3 py-4 bg-white border-2 border-gray-200 text-gray-700 rounded-2xl text-base font-medium hover:border-primary hover:text-primary transition-colors"
       >
@@ -196,16 +227,19 @@ export default function HazardDetection() {
     <div className="space-y-3">
       {/* Video preview */}
       <div className="relative bg-black rounded-2xl overflow-hidden aspect-[4/3]">
+        {/* eslint-disable-next-line react/no-unknown-property */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
+          webkit-playsinline=""
           muted
           className="w-full h-full object-cover"
         />
 
         {/* Close camera */}
         <button
+          type="button"
           onClick={() => { stopCamera(); setUiState(STATE.INITIAL) }}
           className="absolute top-3 right-3 w-9 h-9 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white"
         >
@@ -218,6 +252,7 @@ export default function HazardDetection() {
       {/* Capture button */}
       <div className="flex justify-center">
         <button
+          type="button"
           onClick={capturePhoto}
           className="w-20 h-20 rounded-full border-[5px] border-primary bg-white shadow-lg flex items-center justify-center active:scale-90 transition-transform"
           aria-label="Capture photo"
@@ -228,6 +263,7 @@ export default function HazardDetection() {
 
       {/* Or upload */}
       <button
+        type="button"
         onClick={() => { stopCamera(); fileInputRef.current?.click() }}
         className="w-full text-center py-2 text-sm text-gray-500 hover:text-primary transition-colors"
       >
@@ -259,6 +295,7 @@ export default function HazardDetection() {
       {/* Actions */}
       <div className="flex gap-3">
         <button
+          type="button"
           onClick={handleRetake}
           className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-medium active:scale-[0.98] transition-transform"
         >
@@ -268,6 +305,7 @@ export default function HazardDetection() {
           Retake
         </button>
         <button
+          type="button"
           onClick={handleAnalyze}
           className="flex-[2] flex items-center justify-center gap-2 py-3.5 bg-primary text-white rounded-xl font-semibold shadow-md active:scale-[0.98] transition-transform"
         >

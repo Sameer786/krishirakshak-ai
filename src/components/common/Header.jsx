@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import useOnlineStatus from '../../hooks/useOnlineStatus'
+import { DEMO_MODE } from '../../services/aws/config'
 
 export default function Header() {
   const location = useLocation()
@@ -14,6 +15,7 @@ export default function Header() {
         <div className="flex items-center gap-2">
           {!isHome && (
             <button
+              type="button"
               onClick={() => navigate(-1)}
               className="p-1 -ml-1 rounded-lg hover:bg-primary-dark/30 transition-colors"
               aria-label="Go back"
@@ -41,7 +43,7 @@ export default function Header() {
               {isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
-          {import.meta.env.VITE_DEMO_MODE === 'true' && (
+          {DEMO_MODE && (
             <span className="text-[10px] bg-primary-dark/50 px-2 py-0.5 rounded-full">
               DEMO
             </span>

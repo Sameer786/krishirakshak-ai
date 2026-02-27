@@ -41,6 +41,17 @@ export default function VoiceQA() {
   const autoSpeakRef = useRef(null)
 
   const tts = useSpeechSynthesis({ lang })
+  const isMountedRef = useRef(true)
+
+  // Cleanup on unmount — stop all async operations
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      speech?.stop?.()
+      tts?.stop?.()
+      window.speechSynthesis?.cancel()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleQuestionSubmit = useCallback(
     async (question, source = 'text') => {
@@ -117,6 +128,8 @@ export default function VoiceQA() {
       // --- Online path: call bedrockService ---
       try {
         const result = await askSafetyQuestion(trimmed, lang)
+        if (!isMountedRef.current) return
+
         const entry = {
           question: trimmed,
           answer: result.answer,
@@ -153,10 +166,12 @@ export default function VoiceQA() {
       } catch (err) {
         logError({ action: 'question_submit', error: err, language: langKey })
       } finally {
-        setStatus('idle')
-        setTimeout(() => {
-          scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 100)
+        if (isMountedRef.current) {
+          setStatus('idle')
+          setTimeout(() => {
+            scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 100)
+        }
       }
     },
     [lang, isOnline]
@@ -198,7 +213,9 @@ export default function VoiceQA() {
     tts.stop()
   }
 
-  const handleMicToggle = () => {
+  const handleMicToggle = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
     if (speech.isListening) {
       speech.stop()
     } else {
@@ -282,6 +299,7 @@ export default function VoiceQA() {
       {speech.isSupported && (
         <div className="flex flex-col items-center gap-3">
           <button
+            type="button"
             onClick={handleMicToggle}
             disabled={status === 'thinking'}
             className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 shadow-lg ${
@@ -334,7 +352,15 @@ export default function VoiceQA() {
         </div>
       )}
 
-      {/* Text Input Fallback */}
+      {/* Voice not supported message */}
+      {!speech.isSupported && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
+          <p className="font-medium">{isHindi ? 'आवाज़ इनपुट उपलब्ध नहीं' : 'Voice input not supported'}</p>
+          <p className="text-xs mt-1">{isHindi ? 'कृपया नीचे अपना सवाल टाइप करें।' : 'Please type your question below.'}</p>
+        </div>
+      )}
+
+      {/* Text Input */}
       <form onSubmit={handleTextSubmit} className="space-y-2">
         <div className="relative">
           <input
@@ -342,9 +368,13 @@ export default function VoiceQA() {
             value={textInput}
             onChange={(e) => setTextInput(e.target.value.slice(0, MAX_CHARS))}
             placeholder={
-              isHindi
-                ? 'यहाँ टाइप करें या ऊपर माइक दबाएं...'
-                : 'Type here or tap the mic above...'
+              speech.isSupported
+                ? isHindi
+                  ? 'यहाँ टाइप करें या ऊपर माइक दबाएं...'
+                  : 'Type here or tap the mic above...'
+                : isHindi
+                ? 'यहाँ अपना सवाल टाइप करें...'
+                : 'Type your question here...'
             }
             className="w-full px-4 py-3 pr-20 text-base rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-gray-400"
             disabled={status === 'thinking' || speech.isListening}
@@ -398,6 +428,7 @@ export default function VoiceQA() {
       {history.length > 0 && (
         <div className="flex items-center justify-between">
           <button
+            type="button"
             onClick={() => {
               setHistory([])
               saveHistory([])
