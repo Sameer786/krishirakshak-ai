@@ -68,24 +68,11 @@ export default function HazardDetection() {
         return
       }
 
+      // Save stream to ref — the useEffect below will attach it
+      // to the <video> element once React renders it
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.setAttribute('autoplay', '')
-        videoRef.current.setAttribute('playsinline', '')
-        videoRef.current.setAttribute('muted', '')
-        videoRef.current.muted = true
 
-        try {
-          await videoRef.current.play()
-        } catch (playErr) {
-          console.error('[Camera] play() failed:', playErr)
-          stream.getTracks().forEach((t) => t.stop())
-          streamRef.current = null
-          setCameraError('Camera unavailable. Please use Upload from Gallery.')
-          return
-        }
-      }
+      // Set state FIRST so the <video> element renders in the DOM
       setUiState(STATE.CAMERA_ACTIVE)
     } catch (err) {
       if (!isMountedRef.current) return
@@ -99,6 +86,30 @@ export default function HazardDetection() {
       setCameraError(msg)
     }
   }, [])
+
+  // Attach stream to <video> element once CAMERA_ACTIVE renders it into DOM
+  useEffect(() => {
+    if (uiState !== STATE.CAMERA_ACTIVE) return
+    if (!streamRef.current || !videoRef.current) return
+
+    const video = videoRef.current
+    console.log('[Camera] Attaching stream to video element')
+    video.srcObject = streamRef.current
+    video.setAttribute('autoplay', '')
+    video.setAttribute('playsinline', '')
+    video.setAttribute('muted', '')
+    video.muted = true
+
+    video.play().catch((playErr) => {
+      console.error('[Camera] play() failed:', playErr)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
+      setCameraError('Camera could not start. Please use Upload from Gallery.')
+      setUiState(STATE.INITIAL)
+    })
+  }, [uiState])
 
   // Clean up camera + isMounted on unmount
   useEffect(() => {
