@@ -5,6 +5,7 @@ export default function QuestionChips({ questions, onSelect }) {
       <div className="flex flex-wrap gap-2">
         {questions.map((q) => (
           <button
+            type="button"
             key={q}
             onClick={() => onSelect(q)}
             className="text-left text-sm px-3 py-2 rounded-full bg-white border border-primary-200 text-primary-dark hover:bg-primary-50 active:scale-95 transition-all shadow-sm"
