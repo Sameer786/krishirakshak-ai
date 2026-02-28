@@ -4,7 +4,7 @@ import {
 } from '@aws-sdk/client-bedrock-runtime'
 
 const REGION = process.env.AWS_BEDROCK_REGION || 'ap-south-1'
-const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'amazon.nova-lite-v1:0'
+const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'apac.amazon.nova-lite-v1:0'
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '500', 10)
 
 const client = new BedrockRuntimeClient({ region: REGION })
