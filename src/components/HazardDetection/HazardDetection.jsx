@@ -48,7 +48,7 @@ export default function HazardDetection() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       })
 
@@ -58,13 +58,38 @@ export default function HazardDetection() {
         return
       }
 
+      // Check stream has video tracks
+      const videoTracks = stream.getVideoTracks()
+      console.log('[Camera] tracks:', videoTracks.map(t => ({ label: t.label, enabled: t.enabled, readyState: t.readyState })))
+
+      if (videoTracks.length === 0) {
+        stream.getTracks().forEach((t) => t.stop())
+        setCameraError('Camera unavailable. Please use Upload from Gallery.')
+        return
+      }
+
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        videoRef.current.setAttribute('autoplay', '')
+        videoRef.current.setAttribute('playsinline', '')
+        videoRef.current.setAttribute('muted', '')
+        videoRef.current.muted = true
+
+        try {
+          await videoRef.current.play()
+        } catch (playErr) {
+          console.error('[Camera] play() failed:', playErr)
+          stream.getTracks().forEach((t) => t.stop())
+          streamRef.current = null
+          setCameraError('Camera unavailable. Please use Upload from Gallery.')
+          return
+        }
       }
       setUiState(STATE.CAMERA_ACTIVE)
     } catch (err) {
       if (!isMountedRef.current) return
+      console.error('[Camera] getUserMedia error:', err.name, err.message)
       let msg = 'Camera not available. Please upload an image instead.'
       if (err.name === 'NotAllowedError') {
         msg = 'Camera permission denied. Please allow camera access in your browser settings, or upload an image.'
@@ -235,6 +260,7 @@ export default function HazardDetection() {
           webkit-playsinline=""
           muted
           className="w-full h-full object-cover"
+          style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', backgroundColor: '#000' }}
         />
 
         {/* Close camera */}
