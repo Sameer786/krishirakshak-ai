@@ -262,17 +262,30 @@ function generateMockResults() {
 // API call with retry
 // ---------------------------------------------------------------------------
 async function callApiWithRetry(imageBase64, attempt = 1) {
+  const url = `${API_GATEWAY_URL}/analyze-hazards`
+
   try {
+    console.log('[Rekognition] Calling real API:', url, { imageSize: imageBase64.length, attempt })
+
     const response = await axios.post(
-      `${API_GATEWAY_URL}/analyze-hazards`,
+      url,
       { image: imageBase64 },
       {
         timeout: REKOGNITION_TIMEOUT_MS,
         headers: { 'Content-Type': 'application/json' },
       }
     )
+
+    console.log('[Rekognition] Response:', {
+      status: response.status,
+      hazardCount: response.data?.hazards?.length || 0,
+      overallRisk: response.data?.overallRisk,
+    })
+
     return response.data
   } catch (error) {
+    console.error('[Rekognition] API error:', { attempt, code: error.code, message: error.message })
+
     if (attempt < MAX_RETRIES && error.code !== 'ERR_CANCELED') {
       const backoff = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
       await delay(backoff)
@@ -294,14 +307,18 @@ async function callApiWithRetry(imageBase64, attempt = 1) {
  * @returns {Promise<{ hazards: Array, overallRisk: string, hazardCount: number, detectedLabels: Array, analyzedAt: string }>}
  */
 export async function analyzeHazards(imageBase64) {
-  // Demo mode
-  if (DEMO_MODE) {
+  // Demo mode or no API URL: use mock data
+  if (DEMO_MODE || !API_GATEWAY_URL) {
+    console.log('[Rekognition] Using DEMO mode', { DEMO_MODE, hasApiUrl: !!API_GATEWAY_URL })
+
     const delayMs = 2000 + Math.random() * 1000 // 2-3 seconds
     await delay(delayMs)
     return generateMockResults()
   }
 
   // Live mode
+  console.log('[Rekognition] Using LIVE mode — calling real API')
+
   try {
     const data = await callApiWithRetry(imageBase64)
 

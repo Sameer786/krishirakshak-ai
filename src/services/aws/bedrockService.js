@@ -32,9 +32,13 @@ function delay(ms) {
 }
 
 async function callApiWithRetry(question, language, attempt = 1) {
+  const url = `${API_GATEWAY_URL}/ask-safety-question`
+
   try {
+    console.log('[Bedrock] Calling real API:', url, { question: question.slice(0, 50), language, attempt })
+
     const response = await axios.post(
-      `${API_GATEWAY_URL}/ask-safety-question`,
+      url,
       {
         question,
         language,
@@ -48,8 +52,16 @@ async function callApiWithRetry(question, language, attempt = 1) {
       }
     )
 
+    console.log('[Bedrock] Response:', {
+      status: response.status,
+      hasAnswer: !!response.data?.answer,
+      confidence: response.data?.confidence,
+    })
+
     return response.data
   } catch (error) {
+    console.error('[Bedrock] API error:', { attempt, code: error.code, message: error.message })
+
     if (attempt < MAX_RETRIES && error.code !== 'ERR_CANCELED') {
       const backoff = Math.min(1000 * Math.pow(2, attempt - 1), 8000)
       await delay(backoff)
@@ -70,8 +82,10 @@ async function callApiWithRetry(question, language, attempt = 1) {
 export async function askSafetyQuestion(question, language = 'hi-IN') {
   const langKey = language.startsWith('hi') ? 'hi' : 'en'
 
-  // Demo mode: return mock data with simulated delay
-  if (DEMO_MODE) {
+  // Demo mode or no API URL: return mock data with simulated delay
+  if (DEMO_MODE || !API_GATEWAY_URL) {
+    console.log('[Bedrock] Using DEMO mode', { DEMO_MODE, hasApiUrl: !!API_GATEWAY_URL })
+
     const delayMs = 800 + Math.random() * 1200
     await delay(delayMs)
 
@@ -86,6 +100,8 @@ export async function askSafetyQuestion(question, language = 'hi-IN') {
   }
 
   // Live mode: call API Gateway → Lambda → Bedrock
+  console.log('[Bedrock] Using LIVE mode — calling real API')
+
   try {
     const data = await callApiWithRetry(question, langKey)
 
