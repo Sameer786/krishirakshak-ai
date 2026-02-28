@@ -1,14 +1,16 @@
 import {
   BedrockRuntimeClient,
-  InvokeModelCommand,
+  ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime'
 
 const REGION = process.env.AWS_BEDROCK_REGION || 'ap-south-1'
-const MODEL_ID =
-  process.env.BEDROCK_MODEL_ID || 'anthropic.claude-3-haiku-20240307-v1:0'
+const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'amazon.nova-lite-v1:0'
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '500', 10)
 
 const client = new BedrockRuntimeClient({ region: REGION })
+
+console.log('[Bedrock] Using model: Amazon Nova 2 Lite')
+console.log('[Bedrock] Region:', REGION, '| Model:', MODEL_ID)
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -152,26 +154,27 @@ export const handler = async (event) => {
       ? `कृपया इस प्रश्न का उत्तर हिंदी में दें:\n\n${trimmedQuestion}`
       : `Please answer this question:\n\n${trimmedQuestion}`
 
-  // Call Bedrock
+  // Call Bedrock using Converse API (Amazon Nova Lite)
   try {
+    console.log('[Bedrock] Calling Converse API:', { model: MODEL_ID, language: langKey, questionLength: trimmedQuestion.length })
+
     const bedrockResponse = await client.send(
-      new InvokeModelCommand({
+      new ConverseCommand({
         modelId: MODEL_ID,
-        contentType: 'application/json',
-        accept: 'application/json',
-        body: JSON.stringify({
-          anthropic_version: 'bedrock-2023-05-31',
-          max_tokens: MAX_TOKENS,
+        system: [{ text: SYSTEM_PROMPT + langInstruction }],
+        messages: [{ role: 'user', content: [{ text: userMessage }] }],
+        inferenceConfig: {
+          maxTokens: MAX_TOKENS,
           temperature: 0.3,
-          system: SYSTEM_PROMPT + langInstruction,
-          messages: [{ role: 'user', content: userMessage }],
-        }),
+        },
       })
     )
 
-    const result = JSON.parse(new TextDecoder().decode(bedrockResponse.body))
     const answer =
-      result.content?.[0]?.text || (langKey === 'hi' ? 'कोई उत्तर नहीं मिला।' : 'No answer found.')
+      bedrockResponse.output?.message?.content?.[0]?.text ||
+      (langKey === 'hi' ? 'कोई उत्तर नहीं मिला।' : 'No answer found.')
+
+    console.log('[Bedrock] Response received:', { answerLength: answer.length, stopReason: bedrockResponse.stopReason })
 
     const sources = extractSources(answer)
     const confidence = estimateConfidence(answer, trimmedQuestion)
@@ -181,11 +184,11 @@ export const handler = async (event) => {
       language: langKey,
       sources,
       confidence,
-      source: 'bedrock-claude-haiku',
+      source: 'bedrock-nova-lite',
       timestamp: new Date().toISOString(),
     })
   } catch (err) {
-    console.error('Bedrock error:', JSON.stringify({
+    console.error('[Bedrock] Error:', JSON.stringify({
       name: err.name,
       message: err.message,
       code: err.$metadata?.httpStatusCode,
@@ -219,7 +222,7 @@ export const handler = async (event) => {
       err.name === 'AccessDeniedException' ||
       err.$metadata?.httpStatusCode === 403
     ) {
-      console.error('Bedrock access denied — check IAM role permissions for model:', MODEL_ID)
+      console.error('[Bedrock] Access denied — check IAM role permissions for model:', MODEL_ID)
       return response(500, {
         error: 'Service configuration error',
         message:
@@ -231,7 +234,7 @@ export const handler = async (event) => {
 
     // Validation error (bad model params)
     if (err.name === 'ValidationException') {
-      console.error('Bedrock validation error:', err.message)
+      console.error('[Bedrock] Validation error:', err.message)
       return response(500, {
         error: 'Processing error',
         message:
