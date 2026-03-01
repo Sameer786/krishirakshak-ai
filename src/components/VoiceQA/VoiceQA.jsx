@@ -220,7 +220,7 @@ export default function VoiceQA() {
     <div className="chat-container">
       {/* Page header with title + language toggle */}
       <div className="chat-header">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 pl-1">
           <h2 className="text-base font-bold text-primary-dark truncate">
             {isHindi ? 'आवाज़ से पूछें' : 'Voice Q&A'}
           </h2>

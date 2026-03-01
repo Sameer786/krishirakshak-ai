@@ -7,7 +7,7 @@ export default function Layout() {
     <div className="app-shell">
       <div className="app-frame">
         <Header />
-        <main className="flex-1 w-full px-4 py-4 pb-24 overflow-y-auto">
+        <main className="flex-1 w-full px-4 py-4 pb-20 overflow-y-auto">
           <Outlet />
         </main>
         <BottomNav />
