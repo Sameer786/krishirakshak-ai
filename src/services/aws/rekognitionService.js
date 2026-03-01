@@ -322,12 +322,28 @@ export async function analyzeHazards(imageBase64) {
   try {
     const data = await callApiWithRetry(imageBase64)
 
+    console.log('[Rekognition] API source:', data.source || 'unknown')
+
+    // Normalize hazards — handle both Bedrock hybrid format and legacy fallback
+    const hazards = (data.hazards || []).map((h) => ({
+      severity: h.severity,
+      confidence: h.confidence,
+      // Bedrock hybrid returns: description (=en.name), recommendation (=en.description)
+      // Fallback returns: description, recommendation (same field names)
+      description: h.description || h.name || 'Safety hazard detected',
+      recommendation: h.recommendation || h.description || '',
+      hindiDescription: h.hindiDescription || h.name_hi || '',
+      hindiRecommendation: h.hindiRecommendation || h.description_hi || '',
+      type: h.type || 'detected_hazard',
+    }))
+
     return {
-      hazards: data.hazards || [],
+      hazards,
       overallRisk: data.overallRisk || 'NONE',
-      hazardCount: data.hazardCount || data.hazards?.length || 0,
-      detectedLabels: data.detectedLabels || [],
+      hazardCount: data.hazardCount || hazards.length,
+      detectedLabels: data.detectedLabels || data.labels || [],
       analyzedAt: data.analyzedAt || new Date().toISOString(),
+      source: data.source || 'unknown',
     }
   } catch (error) {
     // Return error-shaped result so the UI can show it gracefully
