@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useSpeechSynthesis from '../../hooks/useSpeechSynthesis'
 import useOnlineStatus from '../../hooks/useOnlineStatus'
@@ -84,6 +84,15 @@ export default function HazardResults({ results, imageData, onNewScan }) {
   const navigate = useNavigate()
   const { isOnline } = useOnlineStatus()
   const tts = useSpeechSynthesis({ lang: 'en-IN' })
+
+  // Auto-save results to localStorage on mount
+  useEffect(() => {
+    if (results && imageData && !saved) {
+      saveDetection(imageData, results).then((ok) => {
+        if (ok) setSaved(true)
+      })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Toggle expand a hazard card
   const toggleExpand = useCallback((index) => {

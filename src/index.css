@@ -359,3 +359,116 @@ main:has(> .chat-container) {
   margin: 0.25rem 0;
   color: #4b5563;
 }
+
+/* ---------------------------------------------------------------
+   Bottom Sheet
+   --------------------------------------------------------------- */
+.bottom-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  animation: overlay-fade-in 0.25s ease-out both;
+}
+
+.bottom-sheet-overlay.closing {
+  animation: overlay-fade-out 0.2s ease-in both;
+}
+
+.bottom-sheet-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  z-index: 101;
+  padding: 12px 20px max(20px, env(safe-area-inset-bottom));
+  animation: sheet-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.bottom-sheet-panel.closing {
+  animation: sheet-slide-down 0.2s ease-in both;
+}
+
+@media (min-width: 768px) {
+  .bottom-sheet-overlay {
+    position: absolute;
+  }
+  .bottom-sheet-panel {
+    position: absolute;
+    border-radius: 20px 20px 12px 12px;
+  }
+}
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes overlay-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes sheet-slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes sheet-slide-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+/* Viewfinder bracket corners */
+.viewfinder-frame {
+  position: relative;
+}
+
+.viewfinder-frame::before,
+.viewfinder-frame::after,
+.viewfinder-corner-bl,
+.viewfinder-corner-br {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #16a34a;
+  border-style: solid;
+  border-width: 0;
+}
+
+.viewfinder-frame::before {
+  top: 0; left: 0;
+  border-top-width: 3px;
+  border-left-width: 3px;
+  border-radius: 8px 0 0 0;
+}
+
+.viewfinder-frame::after {
+  top: 0; right: 0;
+  border-top-width: 3px;
+  border-right-width: 3px;
+  border-radius: 0 8px 0 0;
+}
+
+.viewfinder-corner-bl {
+  bottom: 0; left: 0;
+  border-bottom-width: 3px;
+  border-left-width: 3px;
+  border-radius: 0 0 0 8px;
+}
+
+.viewfinder-corner-br {
+  bottom: 0; right: 0;
+  border-bottom-width: 3px;
+  border-right-width: 3px;
+  border-radius: 0 0 8px 0;
+}
+
+/* Scan line animation */
+@keyframes scan-line {
+  0%, 100% { top: 10%; }
+  50%      { top: 85%; }
+}
+.scan-line-anim {
+  animation: scan-line 2.5s ease-in-out infinite;
+}
