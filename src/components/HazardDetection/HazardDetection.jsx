@@ -24,6 +24,7 @@ export default function HazardDetection() {
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
   const isMountedRef = useRef(true)
+  const analyzeRef = useRef(null)
 
   // -----------------------------------------------------------
   // Camera
@@ -320,17 +321,23 @@ export default function HazardDetection() {
   // IMAGE_CAPTURED state — preview + analyze/retake
   const renderCaptured = () => (
     <div className="space-y-4">
-      {/* Image preview */}
-      <div className="relative bg-gray-100 rounded-2xl overflow-hidden">
+      {/* Image preview — constrained to 300px so buttons stay visible */}
+      <div className="relative bg-gray-100 rounded-2xl overflow-hidden" style={{ maxHeight: '300px' }}>
         <img
           src={imageData}
           alt="Captured"
-          className="w-full object-contain max-h-80"
+          className="w-full object-contain"
+          style={{ maxHeight: '300px' }}
+          onLoad={() => {
+            setTimeout(() => {
+              analyzeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+            }, 100)
+          }}
         />
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div ref={analyzeRef} className="flex gap-3">
         <button
           type="button"
           onClick={handleRetake}

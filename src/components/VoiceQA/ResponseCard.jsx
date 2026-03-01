@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import { logFeedback } from '../../utils/analytics'
 
 export default function ResponseCard({ item, onSpeak, isSpeaking, onStop, lang }) {
@@ -50,10 +51,14 @@ export default function ResponseCard({ item, onSpeak, isSpeaking, onStop, lang }
       </div>
 
       {/* Answer */}
-      <div className="px-4 py-3">
-        <p className={`text-sm whitespace-pre-line leading-relaxed ${item.isError ? 'text-red-600' : 'text-gray-700'}`}>
-          {item.answer}
-        </p>
+      <div className={`px-4 py-3 text-sm leading-relaxed ${item.isError ? 'text-red-600' : 'text-gray-700'}`}>
+        {item.isError ? (
+          <p className="whitespace-pre-line">{item.answer}</p>
+        ) : (
+          <div className="markdown-response">
+            <ReactMarkdown>{item.answer}</ReactMarkdown>
+          </div>
+        )}
       </div>
 
       {/* Sources & Confidence */}

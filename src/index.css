@@ -101,3 +101,43 @@ body {
 .tap-scale:active {
   transform: scale(0.97);
 }
+
+/* ---------------------------------------------------------------
+   Markdown response styling (Voice Q&A answers)
+   --------------------------------------------------------------- */
+.markdown-response p {
+  margin: 0.25rem 0;
+}
+.markdown-response strong {
+  font-weight: 600;
+  color: #1f2937;
+}
+.markdown-response ul,
+.markdown-response ol {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+.markdown-response li {
+  margin: 0.15rem 0;
+}
+.markdown-response h1,
+.markdown-response h2,
+.markdown-response h3,
+.markdown-response h4 {
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.875rem;
+}
+.markdown-response code {
+  background: #f3f4f6;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.8em;
+}
+.markdown-response blockquote {
+  border-left: 3px solid #16a34a;
+  padding-left: 0.75rem;
+  margin: 0.25rem 0;
+  color: #4b5563;
+}

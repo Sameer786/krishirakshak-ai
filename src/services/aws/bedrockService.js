@@ -15,6 +15,14 @@ const ERROR_MESSAGES = {
   },
 }
 
+// Greeting patterns — handle locally to avoid unnecessary API calls
+const GREETING_PATTERNS = /^(hello|hi|hey|namaste|namaskar|हेलो|हाय|नमस्ते|नमस्कार|राम राम|जय हिन्द)\s*[!?.]*$/i
+
+const GREETING_RESPONSES = {
+  hi: 'नमस्ते! मैं KrishiRakshak हूँ — आपका कृषि सुरक्षा सहायक। आप मुझसे खेती से जुड़े सुरक्षा के सवाल पूछ सकते हैं। जैसे:\n- कीटनाशक का सुरक्षित उपयोग कैसे करें?\n- ट्रैक्टर चलाते समय क्या सावधानी रखें?\n- गर्मी में खेत में काम करने के टिप्स',
+  en: 'Hello! I am KrishiRakshak — your agricultural safety assistant. You can ask me safety questions about farming. For example:\n- How to safely use pesticides?\n- What precautions to take while operating a tractor?\n- Tips for working in the field during hot weather',
+}
+
 function getErrorMessage(error, langKey) {
   const messages = ERROR_MESSAGES[langKey] || ERROR_MESSAGES.en
 
@@ -82,6 +90,18 @@ async function callApiWithRetry(question, language, attempt = 1) {
 export async function askSafetyQuestion(question, language = 'hi-IN') {
   const langKey = language.startsWith('hi') ? 'hi' : 'en'
 
+  // Handle greetings locally — no need to call the API
+  if (GREETING_PATTERNS.test(question.trim())) {
+    console.log('[Bedrock] Greeting detected, responding locally')
+    await delay(300)
+    return {
+      answer: GREETING_RESPONSES[langKey] || GREETING_RESPONSES.en,
+      sources: ['KrishiRakshak'],
+      confidence: 1,
+      language: langKey,
+    }
+  }
+
   // Demo mode or no API URL: return mock data with simulated delay
   if (DEMO_MODE || !API_GATEWAY_URL) {
     console.log('[Bedrock] Using DEMO mode', { DEMO_MODE, hasApiUrl: !!API_GATEWAY_URL })
@@ -105,13 +125,18 @@ export async function askSafetyQuestion(question, language = 'hi-IN') {
   try {
     const data = await callApiWithRetry(question, langKey)
 
+    const answer = data.answer || data.body?.answer || ''
+
+    // Always show the Bedrock response if we got one — never replace with fallback
     return {
-      answer: data.answer || data.body?.answer || '',
+      answer,
       sources: data.sources || data.body?.sources || [],
-      confidence: data.confidence || data.body?.confidence || 0,
+      confidence: data.confidence || data.body?.confidence || 0.8,
       language: data.language || langKey,
     }
   } catch (error) {
+    // Only show fallback message on actual API failures (network/500 errors)
+    console.error('[Bedrock] API call failed:', error.message)
     const errorMsg = getErrorMessage(error, langKey)
 
     return {
