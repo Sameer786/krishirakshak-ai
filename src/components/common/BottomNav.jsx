@@ -45,8 +45,8 @@ const navItems = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
-      <div className="max-w-md mx-auto flex justify-around py-1.5">
+    <nav className="bottom-nav">
+      <div className="flex justify-around py-1.5">
         {navItems.map((item) => (
           <NavLink
             key={item.path}

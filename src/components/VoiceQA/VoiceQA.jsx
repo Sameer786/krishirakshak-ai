@@ -4,15 +4,14 @@ import useSpeechSynthesis from '../../hooks/useSpeechSynthesis'
 import useOnlineStatus from '../../hooks/useOnlineStatus'
 import { askSafetyQuestion } from '../../services/aws/bedrockService'
 import { getSampleQuestions } from '../../services/aws/mockData'
-import { saveQAToCache, searchCache, clearOldCache, getStorageUsage } from '../../services/offline/cacheService'
+import { saveQAToCache, searchCache, clearOldCache } from '../../services/offline/cacheService'
 import { logQuestionAsked, logResponseReceived, logError } from '../../utils/analytics'
-import LanguageToggle from './LanguageToggle'
 import QuestionChips from './QuestionChips'
-import ResponseHistory from './ResponseHistory'
+import ChatBubble from './ChatBubble'
 
 const HISTORY_KEY = 'krishirakshak_voice_history'
 const LANG_KEY = 'krishirakshak_lang'
-const MAX_HISTORY = 5
+const MAX_HISTORY = 20
 const MAX_CHARS = 300
 
 function loadHistory() {
@@ -27,23 +26,20 @@ function saveHistory(history) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)))
 }
 
-// Clean old cache on first load
 clearOldCache()
 
 export default function VoiceQA() {
   const [lang, setLang] = useState(() => localStorage.getItem(LANG_KEY) || 'hi-IN')
   const [textInput, setTextInput] = useState('')
-  const [status, setStatus] = useState('idle') // idle | listening | thinking | speaking
+  const [status, setStatus] = useState('idle')
   const [history, setHistory] = useState(loadHistory)
   const [speakingIndex, setSpeakingIndex] = useState(-1)
   const { isOnline } = useOnlineStatus()
-  const scrollRef = useRef(null)
+  const chatEndRef = useRef(null)
   const autoSpeakRef = useRef(null)
-
   const tts = useSpeechSynthesis({ lang })
   const isMountedRef = useRef(true)
 
-  // Cleanup on unmount — stop all async operations
   useEffect(() => {
     return () => {
       isMountedRef.current = false
@@ -53,20 +49,24 @@ export default function VoiceQA() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-scroll to bottom when history changes or thinking
+  useEffect(() => {
+    setTimeout(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }, [history, status])
+
   const handleQuestionSubmit = useCallback(
     async (question, source = 'text') => {
       if (!question.trim()) return
-
       const trimmed = question.trim()
       setTextInput('')
       setStatus('thinking')
 
       const startTime = Date.now()
       const langKey = lang.startsWith('hi') ? 'hi' : 'en'
-
       logQuestionAsked({ question: trimmed, language: langKey, isOnline, source })
 
-      // --- Offline path: try cache first ---
       if (!isOnline) {
         const cached = searchCache(trimmed)
         if (cached) {
@@ -79,45 +79,29 @@ export default function VoiceQA() {
             timestamp: Date.now(),
           }
           logResponseReceived({
-            question: trimmed,
-            responseTimeMs: Date.now() - startTime,
-            language: langKey,
-            isOnline: false,
-            fromCache: true,
-            confidence: cached.confidence,
+            question: trimmed, responseTimeMs: Date.now() - startTime,
+            language: langKey, isOnline: false, fromCache: true, confidence: cached.confidence,
           })
-
           setHistory((prev) => {
-            const next = [entry, ...prev].slice(0, MAX_HISTORY)
+            const next = [...prev, entry].slice(-MAX_HISTORY)
             saveHistory(next)
             return next
           })
           setStatus('idle')
-
-          // Auto-read cached response
           autoSpeakRef.current = cached.answer
           return
         }
 
-        // No cache match while offline
         const offlineMsg = langKey === 'hi'
           ? 'आप ऑफ़लाइन हैं। नए सवालों के लिए इंटरनेट से कनेक्ट करें।'
           : "You're offline. Connect to the internet to ask new questions."
-
         const entry = {
-          question: trimmed,
-          answer: offlineMsg,
-          sources: [],
-          confidence: 0,
-          isError: true,
-          isOffline: true,
-          timestamp: Date.now(),
+          question: trimmed, answer: offlineMsg, sources: [], confidence: 0,
+          isError: true, isOffline: true, timestamp: Date.now(),
         }
-
         logError({ action: 'question_offline_no_cache', error: 'No cached answer', language: langKey })
-
         setHistory((prev) => {
-          const next = [entry, ...prev].slice(0, MAX_HISTORY)
+          const next = [...prev, entry].slice(-MAX_HISTORY)
           saveHistory(next)
           return next
         })
@@ -125,7 +109,6 @@ export default function VoiceQA() {
         return
       }
 
-      // --- Online path: call bedrockService ---
       try {
         const result = await askSafetyQuestion(trimmed, lang)
         if (!isMountedRef.current) return
@@ -138,56 +121,40 @@ export default function VoiceQA() {
           isError: !!result.error,
           timestamp: Date.now(),
         }
-
         logResponseReceived({
-          question: trimmed,
-          responseTimeMs: Date.now() - startTime,
-          language: langKey,
-          isOnline: true,
-          fromCache: false,
-          confidence: result.confidence,
+          question: trimmed, responseTimeMs: Date.now() - startTime,
+          language: langKey, isOnline: true, fromCache: false, confidence: result.confidence,
         })
-
-        // Cache successful responses for offline use
         if (!result.error) {
           saveQAToCache(trimmed, result.answer, langKey, result.sources, result.confidence)
         }
-
         setHistory((prev) => {
-          const next = [entry, ...prev].slice(0, MAX_HISTORY)
+          const next = [...prev, entry].slice(-MAX_HISTORY)
           saveHistory(next)
           return next
         })
-
-        // Auto-read the response
         if (!result.error) {
           autoSpeakRef.current = result.answer
         }
       } catch (err) {
-        logError({ action: 'question_submit', error: err, language: langKey })
+        logError({ action: 'question_submit', error: err, language: lang.startsWith('hi') ? 'hi' : 'en' })
       } finally {
-        if (isMountedRef.current) {
-          setStatus('idle')
-          setTimeout(() => {
-            scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }, 100)
-        }
+        if (isMountedRef.current) setStatus('idle')
       }
     },
     [lang, isOnline]
   )
 
-  // Auto-speak new responses
   useEffect(() => {
     if (autoSpeakRef.current && status === 'idle' && !tts.isSpeaking) {
       const text = autoSpeakRef.current
       autoSpeakRef.current = null
       setTimeout(() => {
-        setSpeakingIndex(0)
+        setSpeakingIndex(history.length - 1)
         tts.speak(text)
       }, 300)
     }
-  }, [status, tts])
+  }, [status, tts, history.length])
 
   const speech = useSpeechRecognition({
     lang,
@@ -195,13 +162,11 @@ export default function VoiceQA() {
     silenceTimeout: 2000,
   })
 
-  // Update status from speech recognition
   useEffect(() => {
     if (speech.isListening) setStatus('listening')
     else if (status === 'listening') setStatus('idle')
   }, [speech.isListening, status])
 
-  // Update status from TTS
   useEffect(() => {
     if (tts.isSpeaking) setStatus('speaking')
     else if (status === 'speaking') setStatus('idle')
@@ -226,9 +191,7 @@ export default function VoiceQA() {
 
   const handleTextSubmit = (e) => {
     e.preventDefault()
-    if (textInput.trim()) {
-      handleQuestionSubmit(textInput, 'text')
-    }
+    if (textInput.trim()) handleQuestionSubmit(textInput, 'text')
   }
 
   const handleChipSelect = (question) => {
@@ -236,8 +199,8 @@ export default function VoiceQA() {
     handleQuestionSubmit(question, 'chip')
   }
 
-  const handleSpeak = (text) => {
-    setSpeakingIndex(history.findIndex((h) => h.answer === text))
+  const handleSpeak = (text, index) => {
+    setSpeakingIndex(index)
     tts.speak(text)
   }
 
@@ -246,202 +209,162 @@ export default function VoiceQA() {
     tts.stop()
   }
 
-  // Clear speaking index when TTS ends
   useEffect(() => {
     if (!tts.isSpeaking) setSpeakingIndex(-1)
   }, [tts.isSpeaking])
 
   const isHindi = lang.startsWith('hi')
   const sampleQuestions = getSampleQuestions(lang)
-  const storageInfo = getStorageUsage()
 
   return (
-    <div className="space-y-5 pb-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-primary-dark">
+    <div className="chat-container">
+      {/* Page header with title + language toggle */}
+      <div className="chat-header">
+        <div className="flex items-center gap-2 min-w-0">
+          <h2 className="text-base font-bold text-primary-dark truncate">
             {isHindi ? 'आवाज़ से पूछें' : 'Voice Q&A'}
           </h2>
-          <p className="text-xs text-gray-500">
-            {isHindi ? 'कृषि सुरक्षा के सवाल पूछें' : 'Ask agricultural safety questions'}
-          </p>
+          {!isOnline && (
+            <span className="flex items-center gap-1 text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+              Offline
+            </span>
+          )}
         </div>
-        {!isOnline && (
-          <span className="flex items-center gap-1 text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-            Offline
-          </span>
-        )}
-      </div>
-
-      {/* Language Toggle */}
-      <LanguageToggle lang={lang} onChange={handleLangChange} />
-
-      {/* Status Banner */}
-      {status !== 'idle' && (
-        <div
-          className={`text-center py-3 px-4 rounded-xl text-sm font-medium animate-pulse ${
-            status === 'listening'
-              ? 'bg-red-50 text-red-600'
-              : status === 'thinking'
-              ? 'bg-amber-50 text-amber-700'
-              : 'bg-blue-50 text-blue-600'
-          }`}
-        >
-          {status === 'listening' && (isHindi ? '🎤 सुन रहा हूँ...' : '🎤 Listening...')}
-          {status === 'thinking' && (isHindi ? '🤔 AI सोच रहा है...' : '🤔 AI is thinking...')}
-          {status === 'speaking' && (isHindi ? '🔊 बोल रहा हूँ...' : '🔊 Speaking...')}
-        </div>
-      )}
-
-      {/* Mic Button */}
-      {speech.isSupported && (
-        <div className="flex flex-col items-center gap-3">
+        {/* Compact language toggle */}
+        <div className="flex items-center bg-gray-100 rounded-full p-0.5 shrink-0">
           <button
             type="button"
-            onClick={handleMicToggle}
-            disabled={status === 'thinking'}
-            className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-200 active:scale-95 shadow-lg ${
-              speech.isListening
-                ? 'bg-red-500 hover:bg-red-600'
-                : status === 'thinking'
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-primary hover:bg-primary-dark'
+            onClick={() => handleLangChange('hi-IN')}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+              isHindi ? 'bg-primary text-white shadow-sm' : 'text-gray-500'
             }`}
           >
-            {speech.isListening && (
-              <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-30" />
-            )}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="white"
-              className="w-10 h-10 relative z-10"
-            >
-              <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
-              <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
-            </svg>
+            Hi
           </button>
-          <p className="text-xs text-gray-500">
-            {speech.isListening
-              ? isHindi
-                ? 'बोलना शुरू करें...'
-                : 'Start speaking...'
-              : isHindi
-              ? 'माइक दबाएं और बोलें'
-              : 'Tap mic and speak'}
-          </p>
+          <button
+            type="button"
+            onClick={() => handleLangChange('en-IN')}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+              !isHindi ? 'bg-primary text-white shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            En
+          </button>
+        </div>
+      </div>
+
+      {/* Listening banner */}
+      {status === 'listening' && (
+        <div className="mx-4 mt-2 text-center py-2 px-3 rounded-xl text-xs font-medium bg-red-50 text-red-600 animate-pulse">
+          {isHindi ? '🎤 सुन रहा हूँ... बोलें' : '🎤 Listening... speak now'}
         </div>
       )}
 
-      {/* Real-time transcription */}
-      {speech.isListening && speech.transcript && (
-        <div className="bg-white rounded-xl p-4 border border-red-200 shadow-sm">
-          <p className="text-xs text-red-500 font-medium mb-1">
-            {isHindi ? 'आप बोल रहे हैं:' : 'You are saying:'}
-          </p>
-          <p className="text-base text-gray-800">{speech.transcript}</p>
+      {/* Chat area */}
+      <div className="chat-messages">
+        {/* Empty state: welcome + chips */}
+        {history.length === 0 && status !== 'thinking' && (
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+            <div className="text-4xl mb-3">🌾</div>
+            <p className="text-sm font-medium text-gray-700 mb-1">
+              {isHindi ? 'नमस्ते! मैं KrishiRakshak हूँ' : 'Hello! I am KrishiRakshak'}
+            </p>
+            <p className="text-xs text-gray-400 mb-5">
+              {isHindi ? 'कृषि सुरक्षा के बारे में कुछ भी पूछें' : 'Ask me anything about farm safety'}
+            </p>
+            <QuestionChips questions={sampleQuestions} onSelect={handleChipSelect} />
+          </div>
+        )}
+
+        {/* Chat bubbles — chronological order (oldest first) */}
+        {history.map((item, i) => (
+          <ChatBubble
+            key={item.timestamp}
+            item={item}
+            onSpeak={(text) => handleSpeak(text, i)}
+            isSpeaking={speakingIndex === i}
+            onStop={handleStopSpeak}
+            lang={lang}
+          />
+        ))}
+
+        {/* Typing indicator */}
+        {status === 'thinking' && (
+          <div className="flex items-start gap-2 px-4 py-1">
+            <span className="text-lg leading-none mt-1">🌾</span>
+            <div className="bg-white border border-gray-200 rounded-2xl rounded-bl px-4 py-3 shadow-sm">
+              <div className="typing-dots">
+                <span /><span /><span />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scroll anchor */}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Quick chips above input when chat has messages */}
+      {history.length > 0 && status === 'idle' && (
+        <div className="chat-chips-bar">
+          <QuestionChips questions={sampleQuestions} onSelect={handleChipSelect} />
         </div>
       )}
 
-      {/* Error message */}
+      {/* Speech error */}
       {speech.error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+        <div className="mx-4 mb-1 bg-red-50 border border-red-200 rounded-lg p-2 text-xs text-red-600">
           {speech.error}
         </div>
       )}
 
-      {/* Voice not supported message */}
-      {!speech.isSupported && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-700">
-          <p className="font-medium">{isHindi ? 'आवाज़ इनपुट उपलब्ध नहीं' : 'Voice input not supported'}</p>
-          <p className="text-xs mt-1">{isHindi ? 'कृपया नीचे अपना सवाल टाइप करें।' : 'Please type your question below.'}</p>
-        </div>
-      )}
+      {/* Input bar — fixed above bottom nav */}
+      <div className="chat-input-bar">
+        <form onSubmit={handleTextSubmit} className="flex items-center gap-2 w-full">
+          {/* Mic button */}
+          {speech.isSupported && (
+            <button
+              type="button"
+              onClick={handleMicToggle}
+              disabled={status === 'thinking'}
+              className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                speech.isListening
+                  ? 'bg-red-500 mic-pulse'
+                  : status === 'thinking'
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-primary hover:bg-primary-dark'
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-5 h-5">
+                <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
+                <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
+              </svg>
+            </button>
+          )}
 
-      {/* Text Input */}
-      <form onSubmit={handleTextSubmit} className="space-y-2">
-        <div className="relative">
+          {/* Text input */}
           <input
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value.slice(0, MAX_CHARS))}
-            placeholder={
-              speech.isSupported
-                ? isHindi
-                  ? 'यहाँ टाइप करें या ऊपर माइक दबाएं...'
-                  : 'Type here or tap the mic above...'
-                : isHindi
-                ? 'यहाँ अपना सवाल टाइप करें...'
-                : 'Type your question here...'
-            }
-            className="w-full px-4 py-3 pr-20 text-base rounded-xl border border-gray-200 bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 placeholder:text-gray-400"
+            placeholder={isHindi ? 'मैसेज टाइप करें...' : 'Type a message...'}
+            className="flex-1 min-w-0 px-4 py-2.5 text-sm rounded-full border border-gray-200 bg-white focus:outline-none focus:border-primary placeholder:text-gray-400"
             disabled={status === 'thinking' || speech.isListening}
           />
-          {textInput && (
-            <button
-              type="button"
-              onClick={() => setTextInput('')}
-              className="absolute right-14 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
+
+          {/* Send button */}
           <button
             type="submit"
             disabled={!textInput.trim() || status === 'thinking'}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
+            className="shrink-0 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-primary-dark transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
               <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 005.135 9.25h6.115a.75.75 0 010 1.5H5.135a1.5 1.5 0 00-1.442 1.086l-1.414 4.926a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
             </svg>
           </button>
-        </div>
-        <div className="flex justify-between px-1">
-          <span className="text-[10px] text-gray-400">
-            {!speech.isSupported && (isHindi ? 'आवाज़ इस ब्राउज़र में उपलब्ध नहीं' : 'Voice not supported in this browser')}
-          </span>
-          <span className="text-[10px] text-gray-400">
-            {textInput.length}/{MAX_CHARS}
-          </span>
-        </div>
-      </form>
-
-      {/* Sample Questions */}
-      <QuestionChips questions={sampleQuestions} onSelect={handleChipSelect} />
-
-      {/* Response History */}
-      <div ref={scrollRef}>
-        <ResponseHistory
-          history={history}
-          onSpeak={handleSpeak}
-          speakingIndex={speakingIndex}
-          onStop={handleStopSpeak}
-          lang={lang}
-        />
+        </form>
       </div>
-
-      {/* Footer: Clear History + Cache Info */}
-      {history.length > 0 && (
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => {
-              setHistory([])
-              saveHistory([])
-            }}
-            className="py-2 text-xs text-gray-400 hover:text-red-500 transition-colors"
-          >
-            {isHindi ? 'इतिहास साफ़ करें' : 'Clear history'}
-          </button>
-          <span className="text-[10px] text-gray-400">
-            Cache: {storageInfo.itemCount} items ({storageInfo.formatted})
-          </span>
-        </div>
-      )}
     </div>
   )
 }

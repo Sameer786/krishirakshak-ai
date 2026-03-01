@@ -10,7 +10,7 @@ export default function Header() {
 
   return (
     <header className="bg-primary text-white shadow-lg sticky top-0 z-50">
-      <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="px-4 py-3 flex items-center justify-between">
         {/* Left: Back button or logo */}
         <div className="flex items-center gap-2">
           {!isHome && (
