@@ -6,6 +6,7 @@ import { askSafetyQuestion } from '../../services/aws/bedrockService'
 import { getSampleQuestions } from '../../services/aws/mockData'
 import { saveQAToCache, searchCache, clearOldCache } from '../../services/offline/cacheService'
 import { logQuestionAsked, logResponseReceived, logError } from '../../utils/analytics'
+import { addActivity } from '../../utils/activityTracker'
 import QuestionChips from './QuestionChips'
 import ChatBubble from './ChatBubble'
 
@@ -136,6 +137,7 @@ export default function VoiceQA() {
         })
         if (!result.error) {
           autoSpeakRef.current = result.answer
+          addActivity('voice', 'Voice Question', trimmed.slice(0, 40))
         }
       } catch (err) {
         logError({ action: 'question_submit', error: err, language: lang.startsWith('hi') ? 'hi' : 'en' })

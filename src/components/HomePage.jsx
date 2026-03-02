@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import OfflineIndicator from './common/OfflineIndicator'
+import { getActivities, clearActivities, formatTimeAgo } from '../utils/activityTracker'
 
 const SAFETY_TIPS = [
   'Always wear protective gloves when handling pesticides.',
@@ -55,8 +57,24 @@ const features = [
   },
 ]
 
+const ACTIVITY_ICONS = {
+  voice: { emoji: '🎙️', bg: 'bg-sky-100', text: 'text-sky-600' },
+  hazard: { emoji: '📷', bg: 'bg-amber-100', text: 'text-amber-600' },
+  checklist: { emoji: '✅', bg: 'bg-green-100', text: 'text-green-600' },
+}
+
 export default function HomePage() {
   const tip = getTodaysTip()
+  const [activities, setActivities] = useState([])
+
+  useEffect(() => {
+    setActivities(getActivities())
+  }, [])
+
+  const handleClearActivities = () => {
+    clearActivities()
+    setActivities([])
+  }
 
   return (
     <div className="space-y-5">
@@ -124,6 +142,54 @@ export default function HomePage() {
         </div>
         <div className="px-4 py-3">
           <p className="text-sm text-gray-700 leading-relaxed">{tip}</p>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">🕐</span>
+            <span className="text-xs font-semibold text-gray-700">Recent Activity</span>
+          </div>
+          {activities.length > 0 && (
+            <button
+              onClick={handleClearActivities}
+              className="text-[11px] text-gray-400 hover:text-red-500 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <div className="divide-y divide-gray-50">
+          {activities.length === 0 ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-sm text-gray-400">No activity yet</p>
+              <p className="text-xs text-gray-300 mt-0.5">
+                Use Voice Q&A, Hazard Detection, or Checklists to see activity here
+              </p>
+            </div>
+          ) : (
+            activities.slice(0, 3).map((activity, idx) => {
+              const iconConfig = ACTIVITY_ICONS[activity.type] || ACTIVITY_ICONS.voice
+              return (
+                <div key={`${activity.timestamp}-${idx}`} className="flex items-center gap-3 px-4 py-3">
+                  <div
+                    className={`w-9 h-9 rounded-full ${iconConfig.bg} flex items-center justify-center flex-shrink-0`}
+                  >
+                    <span className="text-base leading-none">{iconConfig.emoji}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{activity.title}</p>
+                    <p className="text-xs text-gray-400 truncate">{activity.subtitle}</p>
+                  </div>
+                  <span className="text-[11px] text-gray-300 flex-shrink-0 whitespace-nowrap">
+                    {formatTimeAgo(activity.timestamp)}
+                  </span>
+                </div>
+              )
+            })
+          )}
         </div>
       </div>
 

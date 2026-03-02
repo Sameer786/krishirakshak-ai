@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import TEMPLATES, { PPE_ICONS } from './templates'
 import useSpeechSynthesis from '../../hooks/useSpeechSynthesis'
+import { addActivity } from '../../utils/activityTracker'
 
 const STORAGE_KEY = 'krishirakshak_jha_progress'
 
@@ -98,6 +99,7 @@ export default function JHAChecklist() {
           const newCount = selectedTemplate.items.filter((i) => next[i.id]).length
           if (newCount === selectedTemplate.items.length) {
             setTimeout(() => setShowCelebration(true), 300)
+            addActivity('checklist', 'Checklist Completed', selectedTemplate.title.en)
           } else {
             setShowCelebration(false)
           }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import useSpeechSynthesis from '../../hooks/useSpeechSynthesis'
 import useOnlineStatus from '../../hooks/useOnlineStatus'
 import { compressImage } from '../../utils/imageUtils'
+import { addActivity } from '../../utils/activityTracker'
 
 const DETECTIONS_KEY = 'krishirakshak_detections'
 const MAX_SAVED = 20
@@ -91,6 +92,11 @@ export default function HazardResults({ results, imageData, onNewScan }) {
       saveDetection(imageData, results).then((ok) => {
         if (ok) setSaved(true)
       })
+      addActivity(
+        'hazard',
+        'Hazard Detected',
+        `${results.overallRisk} - ${results.hazardCount} hazard${results.hazardCount !== 1 ? 's' : ''}`,
+      )
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
