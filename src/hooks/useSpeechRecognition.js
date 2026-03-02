@@ -51,21 +51,16 @@ export default function useSpeechRecognition({ lang = 'hi-IN', onResult, silence
       clearSilenceTimer()
 
       let finalTranscript = ''
-      let interimTranscript = ''
 
-      for (let i = 0; i < event.results.length; i++) {
-        const result = event.results[i]
-        if (result.isFinal) {
-          finalTranscript += result[0].transcript
-        } else {
-          interimTranscript += result[0].transcript
+      // Only use results from resultIndex onwards, and only final results
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript
         }
       }
 
-      const currentText = finalTranscript || interimTranscript
-      setTranscript(currentText)
-
       if (finalTranscript) {
+        setTranscript(finalTranscript.trim())
         silenceTimerRef.current = setTimeout(() => {
           stop()
           if (onResult) onResult(finalTranscript.trim())

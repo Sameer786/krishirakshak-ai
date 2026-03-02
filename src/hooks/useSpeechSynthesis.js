@@ -1,5 +1,24 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 
+/**
+ * Strip markdown formatting so TTS reads clean text
+ */
+function stripMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')   // **bold**
+    .replace(/\*(.*?)\*/g, '$1')       // *italic*
+    .replace(/#{1,6}\s?/g, '')         // # headings
+    .replace(/`(.*?)`/g, '$1')         // `code`
+    .replace(/^[\s]*[-*+]\s/gm, '')    // - list items
+    .replace(/^[\s]*\d+\.\s/gm, '')    // 1. numbered lists
+    .replace(/>/g, '')                 // > blockquotes
+    .replace(/\n{2,}/g, '. ')          // double newlines → pause
+    .replace(/\n/g, '. ')              // single newlines → pause
+    .replace(/\s{2,}/g, ' ')           // collapse whitespace
+    .trim()
+}
+
 export default function useSpeechSynthesis({ lang = 'hi-IN' }) {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -16,7 +35,10 @@ export default function useSpeechSynthesis({ lang = 'hi-IN' }) {
 
     stop()
 
-    const utterance = new SpeechSynthesisUtterance(text)
+    const cleanText = stripMarkdown(text)
+    if (!cleanText) return
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
     utterance.lang = lang
     utterance.rate = 0.9
     utterance.pitch = 1
