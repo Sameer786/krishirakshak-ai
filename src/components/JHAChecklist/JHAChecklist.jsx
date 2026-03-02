@@ -367,6 +367,7 @@ export default function JHAChecklist() {
                     isChecked ? 'text-green-800 line-through' : 'text-gray-800'
                   }`}
                 >
+                  {item.emoji && <span className="mr-1.5">{item.emoji}</span>}
                   {item.en}
                 </p>
                 <p
@@ -392,9 +393,7 @@ export default function JHAChecklist() {
                               : 'bg-amber-50 text-amber-700'
                           }`}
                         >
-                          <span className="w-4 h-4 rounded-full bg-current/10 flex items-center justify-center text-[10px] font-bold">
-                            {ppe.icon}
-                          </span>
+                          <span className="text-sm leading-none">{ppe.icon}</span>
                           {ppe.label}
                         </span>
                       )

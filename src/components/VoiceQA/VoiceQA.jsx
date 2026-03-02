@@ -34,6 +34,7 @@ export default function VoiceQA() {
   const [status, setStatus] = useState('idle')
   const [history, setHistory] = useState(loadHistory)
   const [speakingIndex, setSpeakingIndex] = useState(-1)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const { isOnline } = useOnlineStatus()
   const chatEndRef = useRef(null)
   const autoSpeakRef = useRef(null)
@@ -209,6 +210,14 @@ export default function VoiceQA() {
     tts.stop()
   }
 
+  const handleClearChat = useCallback(() => {
+    setHistory([])
+    localStorage.removeItem(HISTORY_KEY)
+    setShowClearConfirm(false)
+    tts.stop()
+    setSpeakingIndex(-1)
+  }, [tts])
+
   useEffect(() => {
     if (!tts.isSpeaking) setSpeakingIndex(-1)
   }, [tts.isSpeaking])
@@ -231,28 +240,69 @@ export default function VoiceQA() {
             </span>
           )}
         </div>
-        {/* Compact language toggle */}
-        <div className="flex items-center bg-gray-100 rounded-full p-0.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleLangChange('hi-IN')}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-              isHindi ? 'bg-primary text-white shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            Hi
-          </button>
-          <button
-            type="button"
-            onClick={() => handleLangChange('en-IN')}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-              !isHindi ? 'bg-primary text-white shadow-sm' : 'text-gray-500'
-            }`}
-          >
-            En
-          </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Clear chat button — only show when there are messages */}
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              aria-label="Clear chat"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
+
+          {/* Compact language toggle */}
+          <div className="flex items-center bg-gray-100 rounded-full p-0.5">
+            <button
+              type="button"
+              onClick={() => handleLangChange('hi-IN')}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                isHindi ? 'bg-primary text-white shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              Hi
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLangChange('en-IN')}
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                !isHindi ? 'bg-primary text-white shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              En
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Clear chat confirmation */}
+      {showClearConfirm && (
+        <div className="mx-4 mt-2 bg-white border border-gray-200 rounded-xl p-3 shadow-md">
+          <p className="text-sm text-gray-700 font-medium text-center mb-3">
+            {isHindi ? 'सभी मैसेज हटाएं?' : 'Clear all messages?'}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(false)}
+              className="flex-1 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg active:scale-[0.97] transition-transform"
+            >
+              {isHindi ? 'रद्द करें' : 'Cancel'}
+            </button>
+            <button
+              type="button"
+              onClick={handleClearChat}
+              className="flex-1 py-2 text-sm font-medium text-white bg-red-500 rounded-lg active:scale-[0.97] transition-transform"
+            >
+              {isHindi ? 'हटाएं' : 'Clear'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Listening banner */}
       {status === 'listening' && (
