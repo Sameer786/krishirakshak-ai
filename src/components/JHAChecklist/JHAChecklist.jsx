@@ -185,18 +185,17 @@ export default function JHAChecklist() {
           >
             <div className="flex items-start gap-3">
               {/* Icon */}
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                {tpl.icon === 'pesticide' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
-                    <path d="M15 7v12.97l-4.21-1.81a1 1 0 00-.79 0L6 19.97V7a2 2 0 012-2h5a2 2 0 012 2zm-6.5 2a.75.75 0 00-.75.75v2a.75.75 0 001.5 0v-2A.75.75 0 008.5 9zm3 0a.75.75 0 00-.75.75v2a.75.75 0 001.5 0v-2A.75.75 0 0011.5 9z" />
-                    <path d="M17 5.33V4a2 2 0 00-2-2H8a2 2 0 00-2 2v1.33A3 3 0 004 8v12a2 2 0 002 2h12a2 2 0 002-2V8a3 3 0 00-2-2.67z" fillOpacity="0.1" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-primary">
-                    <path d="M3.375 4.5C2.339 4.5 1.5 5.34 1.5 6.375V13.5h12V6.375c0-1.036-.84-1.875-1.875-1.875h-8.25zM13.5 15h-12v2.625C1.5 18.661 2.34 19.5 3.375 19.5h8.25c1.035 0 1.875-.84 1.875-1.875V15z" />
-                    <path d="M8.25 19.5a3.375 3.375 0 01-3.163-2.19 1.5 1.5 0 00-1.087.63V19.5h4.25zM14.25 19.5h7.5V6.375c0-1.036-.84-1.875-1.875-1.875h-5.625v15z" fillOpacity="0.1" />
-                  </svg>
-                )}
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-2xl">
+                {({
+                  pesticide: '🧪',
+                  tractor: '🚜',
+                  harvesting: '🌾',
+                  irrigation: '💧',
+                  chemical: '🏪',
+                  livestock: '🐄',
+                  electrical: '⚡',
+                  heatstress: '☀️',
+                })[tpl.icon] || '📋'}
               </div>
 
               {/* Text */}
