@@ -2,12 +2,15 @@ import {
   BedrockRuntimeClient,
   ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime'
+import { BedrockAgentRuntimeClient, RetrieveCommand } from "@aws-sdk/client-bedrock-agent-runtime";
 
 const REGION = process.env.AWS_BEDROCK_REGION || 'ap-south-1'
 const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'apac.amazon.nova-lite-v1:0'
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '500', 10)
 
 const client = new BedrockRuntimeClient({ region: REGION })
+const ragClient = new BedrockAgentRuntimeClient({ region: "ap-south-1" });
+const KNOWLEDGE_BASE_ID = "PIMCAVAB8S";
 
 console.log('[Bedrock] Using model: Amazon Nova 2 Lite')
 console.log('[Bedrock] Region:', REGION, '| Model:', MODEL_ID)
@@ -108,6 +111,50 @@ function estimateConfidence(answer, question) {
   return Math.min(score, 0.95)
 }
 
+async function searchKnowledgeBase(query) {
+  try {
+    const command = new RetrieveCommand({
+      knowledgeBaseId: KNOWLEDGE_BASE_ID,
+      retrievalQuery: { text: query },
+      retrievalConfiguration: {
+        vectorSearchConfiguration: {
+          numberOfResults: 5,
+        },
+      },
+    });
+    const response = await ragClient.send(command);
+    if (response.retrievalResults && response.retrievalResults.length > 0) {
+      const relevantResults = response.retrievalResults.filter(
+        (r) => r.score > 0.4
+      );
+      if (relevantResults.length > 0) {
+        const context = relevantResults
+          .map((r) => r.content.text)
+          .join("\n\n---\n\n");
+        const sources = relevantResults.map((r) => {
+          const uri = r.location?.s3Location?.uri || "Knowledge Base";
+          const fileName = uri.split("/").pop() || "Official Document";
+          return fileName
+            .replace(".txt", "")
+            .replace(".pdf", "")
+            .replace(/-/g, " ")
+            .replace(/_/g, " ");
+        });
+        return {
+          context,
+          sources: [...new Set(sources)].slice(0, 2),
+          score: relevantResults[0].score,
+          resultCount: relevantResults.length,
+        };
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Knowledge Base search error:", error);
+    return null;
+  }
+}
+
 export const handler = async (event) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS' || event.requestContext?.http?.method === 'OPTIONS') {
@@ -153,12 +200,66 @@ export const handler = async (event) => {
 
   // Call Bedrock using Converse API (Amazon Nova Lite)
   try {
-    console.log('[Bedrock] Calling Converse API:', { model: MODEL_ID, language: langKey, questionLength: trimmedQuestion.length })
+    // Search Knowledge Base first
+    const ragResult = await searchKnowledgeBase(trimmedQuestion);
+
+    // DOMAIN RESTRICTION - applies to BOTH RAG and fallback modes
+    const domainRestriction = `
+IMPORTANT DOMAIN RESTRICTION: You are ONLY an agricultural safety assistant.
+If the question is NOT related to agriculture, farming, crops, livestock, pesticides,
+farm machinery, rural safety, government schemes for farmers, weather/climate for farming,
+animal husbandry, dairy farming, irrigation, soil health, or any farming-related topic —
+politely decline by responding ONLY with:
+If the question was in Hindi or Hinglish:
+"मैं केवल कृषि सुरक्षा से जुड़े सवालों का जवाब दे सकता हूँ। कृपया खेती, फसल, कीटनाशक, या कृषि सुरक्षा से संबंधित प्रश्न पूछें। 🌾"
+If the question was in English:
+"I can only answer questions related to agricultural safety. Please ask about farming, crops, pesticides, farm machinery, government schemes for farmers, or farm safety. 🌾"
+Do NOT answer questions about technology, politics, entertainment, sports, coding, science unrelated to agriculture, general knowledge, history unrelated to farming, or any non-farming topic. Be strict about this.
+`;
+
+    let systemPrompt;
+    if (ragResult && ragResult.context) {
+      // RAG MODE - Answer grounded in official documents
+      systemPrompt = `${domainRestriction}
+
+You are KrishiRakshak (कृषि रक्षक), an AI agricultural safety assistant for Indian farmers.
+
+CRITICAL: Answer the farmer's question using the official reference documents provided below. Your answer MUST be primarily based on these documents. If the documents do not contain enough information to fully answer the question, you may supplement with your general agricultural knowledge but prioritize document content.
+
+If the reference documents have no relevant information at all for the question, clearly say:
+In Hindi: "यह जानकारी हमारे आधिकारिक दस्तावेज़ों में पूर्ण रूप से उपलब्ध नहीं है। कृपया अपने नजदीकी कृषि विज्ञान केंद्र (KVK) से संपर्क करें।"
+In English: "This information is not fully available in our official documents. Please contact your nearest Krishi Vigyan Kendra (KVK)."
+
+Do NOT fabricate safety dosages, chemical names, or procedures not in the documents.
+
+REFERENCE DOCUMENTS FROM OFFICIAL SOURCES:
+${ragResult.context}
+
+RESPONSE RULES:
+- If the question is in Hindi or Hinglish, respond in Hindi
+- If the question is in English, respond in English
+- Use bold (**text**) for important safety warnings
+- Use bullet points for step-by-step instructions
+- Include PPE recommendations when discussing chemicals or machinery
+- Keep responses concise and farmer-friendly
+- Mention relevant government schemes when applicable`;
+    } else {
+      // FALLBACK MODE - existing SYSTEM_PROMPT unchanged, domain restriction prepended
+      systemPrompt = domainRestriction + '\n\n' + SYSTEM_PROMPT;
+    }
+
+    console.log('[Bedrock] Calling Converse API:', {
+      model: MODEL_ID,
+      language: langKey,
+      questionLength: trimmedQuestion.length,
+      ragMode: ragResult ? true : false,
+      ragResultCount: ragResult?.resultCount || 0,
+    })
 
     const bedrockResponse = await client.send(
       new ConverseCommand({
         modelId: MODEL_ID,
-        system: [{ text: SYSTEM_PROMPT + langInstruction }],
+        system: [{ text: systemPrompt + langInstruction }],
         messages: [{ role: 'user', content: [{ text: userMessage }] }],
         inferenceConfig: {
           maxTokens: MAX_TOKENS,
@@ -183,6 +284,9 @@ export const handler = async (event) => {
       confidence,
       source: 'bedrock-nova-lite',
       timestamp: new Date().toISOString(),
+      isRAG: ragResult ? true : false,
+      ragSources: ragResult ? ragResult.sources.join(", ") : null,
+      ragConfidence: ragResult ? Math.round(ragResult.score * 100) : null,
     })
   } catch (err) {
     console.error('[Bedrock] Error:', JSON.stringify({
