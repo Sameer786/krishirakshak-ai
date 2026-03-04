@@ -40,12 +40,19 @@ An AI-powered Progressive Web App that helps Indian farmers stay safe with voice
 | Sync | AppSync + bidirectional sync engine | localStorage + service worker cache | Fully offline, no server dependency |
 | Database | SQLite + Neptune graph | localStorage (5MB) | Sufficient for checklist + history data |
 
-### AWS Services Used
+### AWS Services Used (9 services)
 
-- **Amazon Bedrock** — Claude 3 Haiku for safety Q&A responses
-- **Amazon Rekognition** — DetectLabels for camera-based hazard identification
-- **AWS Lambda** — Serverless handlers for both AI services
-- **API Gateway** — REST API with CORS for the PWA frontend
+| # | Service | Purpose |
+|---|---------|---------|
+| 1 | **Amazon Bedrock** (Nova Lite) | AI Q&A responses + hazard analysis via Converse API |
+| 2 | **Bedrock Knowledge Bases** | RAG retrieval for official agricultural safety documents |
+| 3 | **Amazon Rekognition** | DetectLabels for camera-based hazard identification |
+| 4 | **AWS Lambda** (x2) | Serverless handlers for Q&A and hazard detection |
+| 5 | **API Gateway** | REST API with CORS for the PWA frontend |
+| 6 | **Amazon DynamoDB** | Activity logging (`krishirakshak-activity-log` table) |
+| 7 | **Amazon S3** | Static website hosting for frontend + RAG document storage |
+| 8 | **Amazon CloudFront** | Global CDN with HTTPS, compression, SPA routing |
+| 9 | **Amazon CloudWatch** | Lambda monitoring and logging |
 
 ---
 
@@ -68,6 +75,42 @@ Open **http://localhost:5173** on your phone or browser.
 1. Deploy Lambda functions — see [lambda/DEPLOY.md](./lambda/DEPLOY.md)
 2. Update `.env` with your API Gateway URL
 3. Set `VITE_DEMO_MODE=false`
+
+---
+
+## Deployment
+
+KrishiRakshak has two independent frontend deployment options:
+
+### Option 1: Vercel (main branch)
+- **URL**: https://krishirakshak.vercel.app
+- **Branch**: `main` (auto-deploys on push)
+- **Config**: `vercel.json` (SPA rewrites + cache headers)
+- Set env vars in Vercel dashboard: `VITE_API_GATEWAY_URL`, `VITE_DEMO_MODE=false`
+
+### Option 2: AWS S3 + CloudFront (deploy/s3-cloudfront branch)
+- **URL**: https://d2e3izstdqba08.cloudfront.net
+- **S3 Bucket**: `krishirakshak-frontend` (ap-south-1)
+- **CloudFront ID**: `E71T5EYFH0HUG`
+
+**Quick deploy:**
+```bash
+git checkout deploy/s3-cloudfront
+./scripts/deploy-s3.sh
+```
+
+**What the script does:**
+1. Builds production bundle with `VITE_DEMO_MODE=false`
+2. Syncs `dist/` to S3 with `--delete`
+3. Sets optimized cache headers (immutable for hashed assets, no-cache for index.html)
+4. Creates CloudFront invalidation for instant updates
+
+> See [docs/AWS_S3_CLOUDFRONT_SETUP.md](./docs/AWS_S3_CLOUDFRONT_SETUP.md) for full setup details, testing checklist, and troubleshooting.
+
+### Backend (shared by both frontends)
+- **API Gateway**: `https://jd7dn6udrf.execute-api.ap-south-1.amazonaws.com/prod`
+- **Lambdas**: `ask-safety-question`, `analyze-hazards` (deployed via AWS Console zip upload)
+- CORS: `Access-Control-Allow-Origin: *` — works with any frontend domain
 
 ---
 
