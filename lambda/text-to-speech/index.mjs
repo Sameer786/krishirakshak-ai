@@ -37,6 +37,37 @@ function parseBody(event) {
 }
 
 // ---------------------------------------------------------------------------
+// Text cleanup — strip emojis, Hindi danda, markdown before sending to Polly
+// ---------------------------------------------------------------------------
+function cleanTextForSpeech(text) {
+  let cleaned = text
+    // Remove emojis
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')  // emoticons
+    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '')  // symbols & pictographs
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')  // transport & map
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')  // flags
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')    // misc symbols
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')    // dingbats
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')    // variation selectors
+    .replace(/[\u{1F900}-\u{1F9FF}]/gu, '')  // supplemental symbols
+    .replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')  // chess symbols
+    .replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')  // symbols extended
+    .replace(/[\u{200D}]/gu, '')              // zero width joiner
+    // Replace Hindi danda with period (for natural pause)
+    .replace(/।/g, '.')
+    .replace(/॥/g, '.')
+    // Remove markdown formatting
+    .replace(/[*#_~`]/g, '')
+    .replace(/^[-•]\s*/gm, '')
+    // Clean up whitespace
+    .replace(/\n+/g, '. ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return cleaned
+}
+
+// ---------------------------------------------------------------------------
 // Voice configuration
 // ---------------------------------------------------------------------------
 const VOICE_CONFIG = {
@@ -93,8 +124,10 @@ export const handler = async (event) => {
     const lang = language === 'en' ? 'en' : 'hi'
     const voiceConfig = VOICE_CONFIG[lang]
 
+    // Clean text: remove emojis, convert Hindi danda to periods, strip markdown
+    let speechText = cleanTextForSpeech(text)
+
     // Truncate text if too long (Polly limit)
-    let speechText = text.trim()
     if (speechText.length > MAX_TEXT_LENGTH) {
       speechText = speechText.substring(0, MAX_TEXT_LENGTH - 3) + '...'
       console.log(`[Polly] Text truncated from ${text.length} to ${MAX_TEXT_LENGTH} chars`)
