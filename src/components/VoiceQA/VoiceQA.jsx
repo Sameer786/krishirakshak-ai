@@ -122,6 +122,9 @@ export default function VoiceQA() {
           confidence: result.confidence || 0,
           isError: !!result.error,
           timestamp: Date.now(),
+          isRAG: result.isRAG || false,
+          ragSources: result.ragSources || null,
+          ragConfidence: result.ragConfidence || null,
         }
         logResponseReceived({
           question: trimmed, responseTimeMs: Date.now() - startTime,

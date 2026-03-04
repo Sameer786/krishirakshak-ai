@@ -56,6 +56,41 @@ export default function ChatBubble({ item, onSpeak, isSpeaking, onStop, lang }) 
               )}
             </div>
 
+            {/* RAG Verified badge — only when answer is from official documents */}
+            {item.isRAG && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginTop: '8px',
+                  marginBottom: '2px',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  backgroundColor: '#E8F5E9',
+                  color: '#2E7D32',
+                  border: '1px solid #C8E6C9',
+                }}
+              >
+                ✅ Verified from Official Documents
+                {item.ragConfidence && ` • ${item.ragConfidence}%`}
+              </div>
+            )}
+            {item.isRAG && item.ragSources && (
+              <div
+                style={{
+                  fontSize: '9px',
+                  color: '#9E9E9E',
+                  marginBottom: '2px',
+                  fontStyle: 'italic',
+                }}
+              >
+                Sources: {item.ragSources}
+              </div>
+            )}
+
             {/* Footer: sources + actions */}
             <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-gray-100">
               {/* Sources + confidence */}

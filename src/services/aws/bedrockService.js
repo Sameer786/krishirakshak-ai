@@ -133,6 +133,9 @@ export async function askSafetyQuestion(question, language = 'hi-IN') {
       sources: data.sources || data.body?.sources || [],
       confidence: data.confidence || data.body?.confidence || 0.8,
       language: data.language || langKey,
+      isRAG: data.isRAG || false,
+      ragSources: data.ragSources || null,
+      ragConfidence: data.ragConfidence || null,
     }
   } catch (error) {
     // Only show fallback message on actual API failures (network/500 errors)
