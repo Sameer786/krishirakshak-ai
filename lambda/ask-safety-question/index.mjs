@@ -3,6 +3,7 @@ import {
   ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime'
 import { BedrockAgentRuntimeClient, RetrieveCommand } from "@aws-sdk/client-bedrock-agent-runtime";
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 
 const REGION = process.env.AWS_BEDROCK_REGION || 'ap-south-1'
 const MODEL_ID = process.env.BEDROCK_MODEL_ID || 'apac.amazon.nova-lite-v1:0'
@@ -10,6 +11,7 @@ const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '500', 10)
 
 const client = new BedrockRuntimeClient({ region: REGION })
 const ragClient = new BedrockAgentRuntimeClient({ region: "ap-south-1" });
+const dynamoClient = new DynamoDBClient({ region: "ap-south-1" });
 const KNOWLEDGE_BASE_ID = "PIMCAVAB8S";
 
 console.log('[Bedrock] Using model: Amazon Nova 2 Lite')
@@ -109,6 +111,25 @@ function estimateConfidence(answer, question) {
   }
 
   return Math.min(score, 0.95)
+}
+
+async function logActivity(feature, question, source, confidence) {
+  try {
+    await dynamoClient.send(new PutItemCommand({
+      TableName: "krishirakshak-activity-log",
+      Item: {
+        userId: { S: "web-user" },
+        timestamp: { S: new Date().toISOString() },
+        question: { S: question.substring(0, 500) },
+        source: { S: source },
+        confidence: { N: String(confidence || 0) },
+        feature: { S: feature },
+      },
+    }));
+  } catch (error) {
+    console.error("DynamoDB log error:", error);
+    // Don't fail the main request if logging fails
+  }
 }
 
 async function searchKnowledgeBase(query) {
@@ -276,6 +297,14 @@ RESPONSE RULES:
 
     const sources = extractSources(answer)
     const confidence = estimateConfidence(answer, trimmedQuestion)
+
+    // Log activity to DynamoDB (fire and forget)
+    logActivity(
+      "voice-qa",
+      userMessage,
+      ragResult ? "knowledge-base" : "ai-knowledge",
+      ragResult ? Math.round(ragResult.score * 100) : 85
+    );
 
     return response(200, {
       answer,

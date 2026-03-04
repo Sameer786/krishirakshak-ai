@@ -7,6 +7,7 @@ import {
   BedrockRuntimeClient,
   ConverseCommand,
 } from '@aws-sdk/client-bedrock-runtime'
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -20,6 +21,7 @@ const BEDROCK_TIMEOUT_MS = 25000
 
 const rekognitionClient = new RekognitionClient({ region: REGION })
 const bedrockClient = new BedrockRuntimeClient({ region: REGION })
+const dynamoClient = new DynamoDBClient({ region: "ap-south-1" });
 
 console.log('[HazardAnalysis] Region:', REGION, '| Bedrock model:', BEDROCK_MODEL_ID)
 
@@ -346,6 +348,25 @@ function parseBody(event) {
   }
 }
 
+async function logActivity(feature, question, source, confidence) {
+  try {
+    await dynamoClient.send(new PutItemCommand({
+      TableName: "krishirakshak-activity-log",
+      Item: {
+        userId: { S: "web-user" },
+        timestamp: { S: new Date().toISOString() },
+        question: { S: question.substring(0, 500) },
+        source: { S: source },
+        confidence: { N: String(confidence || 0) },
+        feature: { S: feature },
+      },
+    }));
+  } catch (error) {
+    console.error("DynamoDB log error:", error);
+    // Don't fail the main request if logging fails
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Lambda handler
 // ---------------------------------------------------------------------------
@@ -495,6 +516,9 @@ export const handler = async (event) => {
       hazardCount: bedrockResult.hazards.length,
     })
 
+    // Log activity to DynamoDB (fire and forget)
+    logActivity("hazard-detection", "Photo analysis", "rekognition-bedrock", 90);
+
     return jsonResponse(200, {
       success: true,
       hazards: bedrockResult.hazards,
@@ -516,6 +540,9 @@ export const handler = async (event) => {
     })
 
     const fallbackHazards = fallbackAnalysis(detectedLabels)
+
+    // Log activity to DynamoDB (fire and forget)
+    logActivity("hazard-detection", "Photo analysis", "rekognition-bedrock", 90);
 
     return jsonResponse(200, {
       success: true,
