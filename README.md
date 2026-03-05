@@ -1,193 +1,133 @@
-# KrishiRakshak - AI-Powered Agricultural Safety Assistant
+# KrishiRakshak (कृषि रक्षक)
 
-> **AWS AI for Bharat Hackathon Submission**
+**AI-Powered Agricultural Safety PWA for Indian Farmers**
 
-An AI-powered Progressive Web App that helps Indian farmers stay safe with voice-based safety guidance, camera hazard detection, and job hazard analysis checklists — all working offline.
+> Built for the **AWS AI for Bharat Hackathon** | 10 AWS Services | Bilingual Hindi + English | Offline-Ready
 
 ---
 
 ## Live Demo
 
-> **https://krishirakshak.vercel.app** _(deploy via Vercel — see [DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md))_
-
-## Demo Video
-
-> **https://youtube.com/watch?v=YOUR_VIDEO_ID** _(placeholder)_
+| Environment | URL |
+|-------------|-----|
+| **AWS CloudFront** (Primary) | **https://d2e3izstdqba08.cloudfront.net** |
+| **Vercel** (Backup) | https://krishirakshak-ai.vercel.app |
+| **GitHub** | https://github.com/Sameer786/krishirakshak-ai |
 
 ---
 
-## Prototype (Hackathon MVP)
+## Problem Statement
 
-### What was built in 7 days
+Agriculture employs **42% of India's workforce** (~263 million farmers), yet farming remains one of the most hazardous occupations:
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Voice Q&A | Done | Ask safety questions by voice, get AI answers with TTS read-aloud |
-| Hazard Detection | Done | Take photo or upload image, AI detects hazards with severity ratings |
-| JHA Checklists | Done | Pre-built safety checklists with progress tracking and auto-save |
-| PWA + Offline | Done | Installable, works offline via service worker caching |
-| Bilingual UI | Done | Hindi + English throughout all screens |
-| Demo Mode | Done | Full app works without AWS backend using built-in mock data |
+- **Pesticide poisoning** kills an estimated 10,000+ Indian farmers annually
+- **Heat stress** causes hundreds of deaths during peak summer farming
+- **Machinery accidents** are rising as mechanization increases without safety training
+- **Low digital literacy** makes text-heavy safety manuals ineffective
+- **Poor connectivity** in rural areas means cloud-only solutions fail when needed most
 
-### Architecture Decisions: MVP vs. Original Design
+Farmers need safety guidance that speaks their language, works on basic phones, and functions without internet.
 
-| Aspect | Original Design | Hackathon MVP | Why |
-|--------|----------------|---------------|-----|
-| Platform | React Native (Android) | PWA (React + Vite) | Faster development, instant deploy, no app store |
-| Languages | 10+ regional languages | Hindi + English | Covers 57% of Indian farmers, Web Speech API support |
-| LLM Backend | Bedrock + Neptune + Kendra (RAG) | Bedrock Claude 3 Haiku (direct) | Simpler, cheaper, still accurate for safety Q&A |
-| Image AI | Custom ML models + Rekognition | Rekognition DetectLabels + pattern matching | Quick to ship, good hazard coverage |
-| Sync | AppSync + bidirectional sync engine | localStorage + service worker cache | Fully offline, no server dependency |
-| Database | SQLite + Neptune graph | localStorage (5MB) | Sufficient for checklist + history data |
+---
 
-### AWS Services Used (9 services)
+## Our Solution
+
+KrishiRakshak is a **Progressive Web App** that delivers AI-powered agricultural safety assistance in **Hindi and English**, designed for farmers using basic smartphones with intermittent connectivity.
+
+### Features (All Working and Deployed)
+
+| # | Feature | Description |
+|---|---------|-------------|
+| 1 | **Voice Safety Q&A** | Ask farming safety questions by voice. AI responds using RAG (17+ official govt docs from ICAR, FSSAI, NDMA, Insecticides Act, NFSM). Green verified badge shows source document and confidence %. Domain-restricted to agriculture only. |
+| 2 | **Hazard Detection** | Take a photo or upload an image. Rekognition identifies objects, Bedrock analyzes hazards, and results show bilingual severity cards (CRITICAL / HIGH / MEDIUM / LOW). 12 hardcoded fallback patterns for offline. |
+| 3 | **JHA Safety Checklists** | 8 pre-built Job Hazard Analysis templates: Pesticide, Tractor, Harvesting, Irrigation, Chemical Storage, Livestock, Electrical, Heat Stress. Each with 10 bilingual steps, PPE badges, progress tracking, and Polly read-aloud. |
+| 4 | **User Profile** | Name, state, district, primary crop, farm size, and language preference. Personalizes homepage greeting and crop-specific safety tips. Stored in localStorage for offline persistence. |
+| 5 | **Government Schemes** | 8 real Indian govt schemes (PM-KISAN, PMFBY, KCC, Soil Health Card, PM Mandhan, PMKVY, eNAM, PM Krishi Sinchai). Search, category filters (Insurance/Credit/Subsidy/Training), bilingual cards with links to official portals. |
+| 6 | **Offline Support** | Service worker caching, localStorage persistence, PWA installable on phone home screen. |
+| 7 | **Amazon Polly TTS** | Hindi (Aditi voice, standard engine) + English (Kajal voice, neural engine). Emoji stripping, Hindi danda-to-period cleanup, markdown removal. Browser Web Speech API fallback for offline. |
+| 8 | **Activity Logging** | Every query logged to DynamoDB (userId, timestamp, question, source, confidence) for analytics. |
+
+---
+
+## Architecture
+
+```
+                           KrishiRakshak Architecture
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                        User's Phone                            │
+    │  PWA (React 19.2 + Vite 7.3 + Tailwind CSS v4)               │
+    │  Web Speech API (STT) | Polly/Browser TTS | localStorage      │
+    └───────────────────────────┬─────────────────────────────────────┘
+                                │ HTTPS
+                                ▼
+    ┌───────────────────────────────────────────────────────────────┐
+    │  Amazon CloudFront (CDN + HTTPS)  →  Amazon S3 (Static PWA) │
+    └───────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+    ┌───────────────────────────────────────────────────────────────┐
+    │                  Amazon API Gateway (REST)                    │
+    │    POST /ask-safety-question                                  │
+    │    POST /analyze-hazards                                      │
+    │    POST /text-to-speech                                       │
+    └──────┬──────────────────┬──────────────────┬─────────────────┘
+           │                  │                  │
+           ▼                  ▼                  ▼
+    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+    │ Lambda:      │  │ Lambda:      │  │ Lambda:      │
+    │ ask-safety   │  │ analyze-     │  │ text-to-     │
+    │              │  │ hazards      │  │ speech       │
+    └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+           │                 │                  │
+     ┌─────┴─────┐    ┌─────┴─────┐     ┌─────┴─────┐
+     │ Bedrock   │    │Rekognition│     │  Polly    │
+     │ Nova Lite │    │DetectLabels│    │ Hindi/EN  │
+     │ + KB RAG  │    │ + Bedrock │     └─────┬─────┘
+     └─────┬─────┘    └───────────┘           │
+           │                                   │
+     ┌─────┴─────────────────────────────────┐│
+     │         Amazon DynamoDB                ││
+     │    (krishirakshak-activity-log)        ││
+     └────────────────────────────────────────┘│
+```
+
+---
+
+## AWS Services (10 Total)
+
+All deployed in **ap-south-1 (Mumbai)** region.
 
 | # | Service | Purpose |
 |---|---------|---------|
-| 1 | **Amazon Bedrock** (Nova Lite) | AI Q&A responses + hazard analysis via Converse API |
-| 2 | **Bedrock Knowledge Bases** | RAG retrieval for official agricultural safety documents |
-| 3 | **Amazon Rekognition** | DetectLabels for camera-based hazard identification |
-| 4 | **AWS Lambda** (x2) | Serverless handlers for Q&A and hazard detection |
-| 5 | **API Gateway** | REST API with CORS for the PWA frontend |
-| 6 | **Amazon DynamoDB** | Activity logging (`krishirakshak-activity-log` table) |
-| 7 | **Amazon S3** | Static website hosting for frontend + RAG document storage |
-| 8 | **Amazon CloudFront** | Global CDN with HTTPS, compression, SPA routing |
-| 9 | **Amazon CloudWatch** | Lambda monitoring and logging |
+| 1 | **Amazon Bedrock** | Nova Lite model (`apac.amazon.nova-lite-v1:0`) via Converse API for Q&A and hazard analysis |
+| 2 | **Bedrock Knowledge Bases** | RAG retrieval (KB ID: `PIMCAVAB8S`) with Titan Text Embeddings V2, OpenSearch Serverless, 17+ official documents |
+| 3 | **Amazon Rekognition** | DetectLabels (20 labels, 50%+ confidence) for camera-based hazard identification |
+| 4 | **AWS Lambda** (x3) | `krishirakshak-ask-safety`, `krishirakshak-analyze-hazards`, `text-to-speech` (Node.js 18, ES modules) |
+| 5 | **Amazon API Gateway** | REST API (`jd7dn6udrf`) with 3 POST routes + CORS preflight |
+| 6 | **Amazon S3** | Frontend static hosting (`krishirakshak-frontend`) + RAG document storage |
+| 7 | **Amazon DynamoDB** | Activity logging table (`krishirakshak-activity-log`) |
+| 8 | **Amazon CloudWatch** | Lambda monitoring, error tracking, and performance metrics |
+| 9 | **Amazon CloudFront** | CDN with HTTPS, gzip compression, SPA routing via custom error responses |
+| 10 | **Amazon Polly** | Text-to-speech: Hindi (Aditi/standard) + English (Kajal/neural with Aditi fallback) |
 
 ---
 
-## Quick Start
+## RAG Implementation
 
-```bash
-git clone https://github.com/Sameer786/krishirakshak-ai.git
-cd krishirakshak-ai
-cp .env.example .env
-npm install
-npm run dev
-```
+KrishiRakshak uses **Bedrock Knowledge Bases** for Retrieval-Augmented Generation:
 
-Open **http://localhost:5173** on your phone or browser.
-
-> **No AWS account needed!** The app runs in demo mode by default with built-in mock data for all features.
-
-### To connect AWS backend:
-
-1. Deploy Lambda functions — see [lambda/DEPLOY.md](./lambda/DEPLOY.md)
-2. Update `.env` with your API Gateway URL
-3. Set `VITE_DEMO_MODE=false`
-
----
-
-## Deployment
-
-KrishiRakshak has two independent frontend deployment options:
-
-### Option 1: Vercel (main branch)
-- **URL**: https://krishirakshak.vercel.app
-- **Branch**: `main` (auto-deploys on push)
-- **Config**: `vercel.json` (SPA rewrites + cache headers)
-- Set env vars in Vercel dashboard: `VITE_API_GATEWAY_URL`, `VITE_DEMO_MODE=false`
-
-### Option 2: AWS S3 + CloudFront (deploy/s3-cloudfront branch)
-- **URL**: https://d2e3izstdqba08.cloudfront.net
-- **S3 Bucket**: `krishirakshak-frontend` (ap-south-1)
-- **CloudFront ID**: `E71T5EYFH0HUG`
-
-**Quick deploy:**
-```bash
-git checkout deploy/s3-cloudfront
-./scripts/deploy-s3.sh
-```
-
-**What the script does:**
-1. Builds production bundle with `VITE_DEMO_MODE=false`
-2. Syncs `dist/` to S3 with `--delete`
-3. Sets optimized cache headers (immutable for hashed assets, no-cache for index.html)
-4. Creates CloudFront invalidation for instant updates
-
-> See [docs/AWS_S3_CLOUDFRONT_SETUP.md](./docs/AWS_S3_CLOUDFRONT_SETUP.md) for full setup details, testing checklist, and troubleshooting.
-
-### Backend (shared by both frontends)
-- **API Gateway**: `https://jd7dn6udrf.execute-api.ap-south-1.amazonaws.com/prod`
-- **Lambdas**: `ask-safety-question`, `analyze-hazards` (deployed via AWS Console zip upload)
-- CORS: `Access-Control-Allow-Origin: *` — works with any frontend domain
-
----
-
-## Project Structure
-
-```
-krishirakshak-ai/
-├── requirements.md           # Kiro-generated requirements (full vision)
-├── design.md                 # Kiro-generated design (full architecture)
-├── architecture.mermaid      # Architecture diagram
-├── README.md                 # This file
-├── DEPLOY_VERCEL.md          # Vercel deployment guide
-├── vercel.json               # Vercel SPA config
-├── .env.example              # Environment variable template
-│
-├── src/                      # React PWA source
-│   ├── components/
-│   │   ├── HomePage.jsx              # Landing page with feature cards
-│   │   ├── VoiceQA/                  # Voice Q&A feature
-│   │   │   ├── VoiceQA.jsx           # Main voice interface
-│   │   │   ├── LanguageToggle.jsx    # Hindi/English switch
-│   │   │   ├── QuestionChips.jsx     # Sample question buttons
-│   │   │   ├── ResponseCard.jsx      # Answer display card
-│   │   │   └── ResponseHistory.jsx   # Q&A history list
-│   │   ├── HazardDetection/          # Camera hazard detection
-│   │   │   ├── HazardDetection.jsx   # Camera + upload UI
-│   │   │   └── HazardResults.jsx     # Detection results display
-│   │   ├── JHAChecklist/             # Safety checklists
-│   │   │   ├── JHAChecklist.jsx      # Checklist with progress
-│   │   │   └── templates.js          # Checklist template data
-│   │   └── common/                   # Shared components
-│   │       ├── Layout.jsx            # App shell with nav
-│   │       ├── Header.jsx            # Green header bar
-│   │       ├── Navigation.jsx        # Bottom tab navigation
-│   │       ├── Button.jsx            # Reusable button
-│   │       ├── LoadingSpinner.jsx    # Animated spinner
-│   │       ├── SeverityBadge.jsx     # Color-coded severity pill
-│   │       ├── ErrorBoundary.jsx     # React error boundary
-│   │       └── OfflineIndicator.jsx  # Online/offline status
-│   ├── services/
-│   │   ├── aws/
-│   │   │   ├── bedrockService.js     # Bedrock Q&A client + demo mock
-│   │   │   ├── rekognitionService.js # Rekognition client + demo mock
-│   │   │   ├── config.js             # API URL, demo mode detection
-│   │   │   └── mockData.js           # 15+ mock Q&A topics
-│   │   └── offline/
-│   │       ├── storageService.js     # Unified localStorage service
-│   │       └── cacheService.js       # Q&A offline cache
-│   ├── hooks/
-│   │   ├── useSpeechRecognition.js   # Speech-to-text hook
-│   │   ├── useSpeechSynthesis.js     # Text-to-speech hook
-│   │   ├── useOnlineStatus.js        # Online/offline detection
-│   │   └── usePWAInstall.js          # PWA install prompt
-│   ├── utils/
-│   │   ├── imageUtils.js             # Image compression + validation
-│   │   └── analytics.js              # Event logging
-│   ├── main.jsx                      # Entry point + SW registration
-│   ├── App.jsx                       # Router + ErrorBoundary
-│   └── index.css                     # Tailwind theme + animations
-│
-├── public/
-│   ├── manifest.json                 # PWA manifest
-│   ├── sw.js                         # Service worker
-│   ├── icon-192.svg                  # App icon (192px)
-│   └── icon-512.svg                  # App icon (512px)
-│
-├── lambda/                           # AWS Lambda functions
-│   ├── ask-safety-question/
-│   │   ├── index.mjs                 # Bedrock Q&A handler
-│   │   └── package.json
-│   ├── analyze-hazards/
-│   │   ├── index.mjs                 # Rekognition handler
-│   │   └── package.json
-│   └── DEPLOY.md                     # Lambda deployment guide
-│
-└── package.json                      # v1.0.0
-```
+- **Knowledge Base ID**: `PIMCAVAB8S`
+- **Embedding Model**: Amazon Titan Text Embeddings V2
+- **Vector Store**: Amazon OpenSearch Serverless
+- **Documents**: 17+ official publications from:
+  - ICAR (Indian Council of Agricultural Research)
+  - FSSAI (Food Safety and Standards Authority of India)
+  - Insecticides Act, 1968
+  - NDMA (National Disaster Management Authority)
+  - NFSM (National Food Security Mission)
+- **Retrieval**: Top-5 passages with confidence score > 0.4
+- **Domain Restriction**: System prompt constrains AI to agricultural safety only
+- **Verified Badge**: Green badge shows source document name and confidence % when answer comes from RAG
 
 ---
 
@@ -195,63 +135,106 @@ krishirakshak-ai/
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19, Vite 7, Tailwind CSS v4 |
-| Platform | Progressive Web App (service worker, manifest) |
-| Voice | Web Speech API (SpeechRecognition + speechSynthesis) |
-| AI - Q&A | Amazon Bedrock (Claude 3 Haiku) via Lambda |
-| AI - Vision | Amazon Rekognition (DetectLabels) via Lambda |
+| Frontend | React 19.2, Vite 7.3, Tailwind CSS v4 |
+| Routing | React Router v7 |
+| HTTP Client | Axios |
+| Platform | Progressive Web App (Service Worker + Manifest) |
+| Voice Input | Web Speech API (SpeechRecognition) |
+| Voice Output | Amazon Polly (primary) + Web Speech API (offline fallback) |
+| AI Q&A | Amazon Bedrock Nova Lite + Knowledge Bases RAG |
+| AI Vision | Amazon Rekognition DetectLabels + Bedrock analysis |
 | Backend | AWS Lambda (Node.js 18) + API Gateway |
-| Offline | Service Worker (cache-first static, network-first API) + localStorage |
-| Deployment | Vercel (free tier) |
+| Database | Amazon DynamoDB (activity logs) |
+| Storage | localStorage (user data, offline cache) |
+| CDN | Amazon CloudFront + S3 |
 
 ---
 
-## Features in Detail
+## Getting Started
 
-### 1. Voice Safety Q&A
+### Prerequisites
+- Node.js 18+
+- npm 9+
 
-- Tap microphone and ask any farming safety question
-- AI responds with safety guidance, sources, and confidence score
-- Text-to-speech reads the answer aloud (Hindi or English)
-- Works offline — searches cached Q&A history
-- 15+ pre-built sample questions covering pesticides, heat, machinery, first aid
+### Run Locally
 
-### 2. Camera Hazard Detection
+```bash
+git clone https://github.com/Sameer786/krishirakshak-ai.git
+cd krishirakshak-ai
+npm install
+```
 
-- Take a photo or upload from gallery
-- AI analyzes image for agricultural hazards
-- Results show severity (CRITICAL/HIGH/MEDIUM/LOW) with color coding
-- Expandable cards with bilingual recommendations
-- Save detections to history with compressed thumbnails
+Create a `.env` file:
+```env
+VITE_API_GATEWAY_URL=https://jd7dn6udrf.execute-api.ap-south-1.amazonaws.com/prod
+VITE_DEMO_MODE=true
+```
 
-### 3. JHA Safety Checklists
+```bash
+npm run dev
+```
 
-- Pre-built templates: Pesticide Application, Tractor Operation
-- Large 48px checkboxes for easy mobile use
-- Progress bar with percentage tracking
-- PPE requirement badges per step
-- Auto-saves progress — resume where you left off
-- 100% offline, no server needed
+Open **http://localhost:5173** on your phone or browser.
+
+> **No AWS account needed!** Set `VITE_DEMO_MODE=true` to run with built-in mock data for all features.
+
+### Connect to AWS Backend
+
+1. Set `VITE_DEMO_MODE=false` in `.env`
+2. Ensure `VITE_API_GATEWAY_URL` points to your API Gateway
+3. Deploy Lambda functions (see `lambda/` directory)
 
 ---
 
-## Original Vision
+## Deployment
 
-The full design (see [requirements.md](./requirements.md) and [design.md](./design.md)) envisions:
+### Option 1: Vercel (main branch)
 
-- React Native Android app with offline SQLite + 100MB cached ML models
-- 10+ Indian regional languages with local STT/TTS
-- Neptune knowledge graph for contextual farming safety relationships
-- Kendra RAG pipeline for intelligent document retrieval
-- AppSync with bidirectional sync and conflict resolution
-- Compliance tracking and government scheme integration
-- 50K user scale at <$0.10/user/month
+- **URL**: https://krishirakshak-ai.vercel.app
+- **Branch**: `main` (auto-deploys on push)
+- Set env vars in Vercel dashboard: `VITE_API_GATEWAY_URL`, `VITE_DEMO_MODE=false`
 
-The hackathon MVP demonstrates the core value proposition — proving that AI-powered agricultural safety guidance is feasible, useful, and can work offline for rural Indian farmers.
+### Option 2: AWS S3 + CloudFront (deploy/s3-cloudfront branch)
+
+- **URL**: https://d2e3izstdqba08.cloudfront.net
+- **S3 Bucket**: `krishirakshak-frontend` (ap-south-1)
+- **CloudFront**: `E71T5EYFH0HUG`
+
+```bash
+git checkout deploy/s3-cloudfront
+./scripts/deploy-s3.sh
+```
+
+The script builds with production env vars, syncs to S3, sets cache headers, and invalidates CloudFront.
+
+> See [docs/AWS_S3_CLOUDFRONT_SETUP.md](./docs/AWS_S3_CLOUDFRONT_SETUP.md) for full setup details.
+
+### Backend (shared by both frontends)
+
+- **API Gateway**: `https://jd7dn6udrf.execute-api.ap-south-1.amazonaws.com/prod`
+- **3 Lambda functions**: `krishirakshak-ask-safety`, `krishirakshak-analyze-hazards`, `text-to-speech`
+- CORS: `Access-Control-Allow-Origin: *`
+
+---
+
+## Future Roadmap (Planned)
+
+> The following features are **not yet built** — they represent the product vision beyond the hackathon.
+
+- **More Regional Languages** — Tamil, Telugu, Bengali, Marathi, Gujarati
+- **React Native Mobile App** — Native Android/iOS with offline ML models
+- **Knowledge Graph** — Neptune-based crop/pest/season safety relationships
+- **Compliance Tracking** — PDF export of completed JHA checklists for audits
+- **Weather-Based Alerts** — Real-time safety warnings based on local weather
+- **Offline AI** — Cached LLM responses and edge inference for zero-connectivity areas
+- **Community Features** — Farmer-to-farmer safety tip sharing
+- **Government Scheme Eligibility Checker** — AI-powered eligibility matching based on user profile
 
 ---
 
 ## Team
+
+**Ghazi Anwer** — GM-IT, Safe Lanes Consultants | 20+ years in IT & Safety | CISM, CEH certified
 
 Built for the **AWS AI for Bharat Hackathon** by Team KrishiRakshak.
 
