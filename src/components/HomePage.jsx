@@ -4,11 +4,11 @@ import OfflineIndicator from './common/OfflineIndicator'
 import { getActivities, clearActivities, formatTimeAgo } from '../utils/activityTracker'
 
 const SAFETY_TIPS = [
-  'Always wear protective gloves when handling pesticides.',
-  'Keep children away from farm machinery at all times.',
-  'Store chemicals in labeled containers away from food and water.',
-  'Take breaks every 2 hours when working in direct sunlight.',
-  'Wear a mask when spraying fertilizers or pesticides.',
+  { en: 'Always wear protective gloves when handling pesticides.', hi: 'कीटनाशक का उपयोग करते समय हमेशा सुरक्षा दस्ताने पहनें।' },
+  { en: 'Keep children away from farm machinery at all times.', hi: 'बच्चों को खेती की मशीनों से हमेशा दूर रखें।' },
+  { en: 'Store chemicals in labeled containers away from food and water.', hi: 'रसायनों को लेबल लगे डिब्बों में भोजन और पानी से दूर रखें।' },
+  { en: 'Take breaks every 2 hours when working in direct sunlight.', hi: 'धूप में काम करते समय हर 2 घंटे में आराम करें।' },
+  { en: 'Wear a mask when spraying fertilizers or pesticides.', hi: 'खाद या कीटनाशक छिड़काव करते समय मास्क पहनें।' },
 ]
 
 function getTodaysTip() {
@@ -171,10 +171,11 @@ export default function HomePage() {
           <span className="text-xs font-semibold text-primary-dark">Today&apos;s Safety Tip</span>
         </div>
         <div className="px-4 py-3">
-          <p className="text-sm text-gray-700 leading-relaxed">{tip}</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{tip.hi}</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">{tip.en}</p>
           {profile?.crop && profile.crop !== 'Other' && (
             <p className="text-xs text-primary mt-2 font-medium">
-              For {profile.crop} farmers / {CROP_HI[profile.crop] || profile.crop} किसानों के लिए
+              {CROP_HI[profile.crop] || profile.crop} किसानों के लिए / For {profile.crop} farmers
             </p>
           )}
         </div>
