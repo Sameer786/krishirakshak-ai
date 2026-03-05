@@ -57,18 +57,35 @@ const features = [
   },
 ]
 
+const CROP_HI = {
+  Rice: 'धान', Wheat: 'गेहूं', Cotton: 'कपास', Sugarcane: 'गन्ना',
+  Maize: 'मक्का', Soybean: 'सोयाबीन', Pulses: 'दालें',
+  Vegetables: 'सब्जियां', Fruits: 'फल',
+}
+
 const ACTIVITY_ICONS = {
   voice: { emoji: '🎙️', bg: 'bg-sky-100', text: 'text-sky-600' },
   hazard: { emoji: '📷', bg: 'bg-amber-100', text: 'text-amber-600' },
   checklist: { emoji: '✅', bg: 'bg-green-100', text: 'text-green-600' },
 }
 
+function loadProfile() {
+  try {
+    const stored = localStorage.getItem('krishirakshak_profile')
+    return stored ? JSON.parse(stored) : null
+  } catch {
+    return null
+  }
+}
+
 export default function HomePage() {
   const tip = getTodaysTip()
   const [activities, setActivities] = useState([])
+  const [profile, setProfile] = useState(null)
 
   useEffect(() => {
     setActivities(getActivities())
+    setProfile(loadProfile())
   }, [])
 
   const handleClearActivities = () => {
@@ -78,11 +95,24 @@ export default function HomePage() {
 
   return (
     <div className="space-y-5">
-      {/* Title Section */}
+      {/* Title Section — personalized if profile exists */}
       <div className="text-center pt-2">
-        <h1 className="text-2xl font-bold text-primary-dark">KrishiRakshak</h1>
-        <p className="text-base text-primary-600 font-medium">कृषि रक्षक</p>
-        <p className="text-xs text-gray-500 mt-1">AI-Powered Agricultural Safety Assistant</p>
+        {profile?.name ? (
+          <>
+            <h1 className="text-2xl font-bold text-primary-dark">
+              नमस्ते {profile.name}!
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Welcome to KrishiRakshak / कृषि रक्षक
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold text-primary-dark">KrishiRakshak</h1>
+            <p className="text-base text-primary-600 font-medium">कृषि रक्षक</p>
+            <p className="text-xs text-gray-500 mt-1">AI-Powered Agricultural Safety Assistant</p>
+          </>
+        )}
       </div>
 
       {/* Voice Button — large central CTA */}
@@ -142,6 +172,11 @@ export default function HomePage() {
         </div>
         <div className="px-4 py-3">
           <p className="text-sm text-gray-700 leading-relaxed">{tip}</p>
+          {profile?.crop && profile.crop !== 'Other' && (
+            <p className="text-xs text-primary mt-2 font-medium">
+              For {profile.crop} farmers / {CROP_HI[profile.crop] || profile.crop} किसानों के लिए
+            </p>
+          )}
         </div>
       </div>
 
