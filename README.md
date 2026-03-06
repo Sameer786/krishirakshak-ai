@@ -6,6 +6,19 @@
 
 ---
 
+## ⚠️ Branch Guide (For Judges)
+
+| Branch | Purpose | Status |
+|--------|---------|--------|
+| **`deploy/s3-cloudfront`** | **Primary branch — all features, latest code** | ✅ Active |
+| `main` | Vercel auto-deploy (legacy) | ⚠️ Older snapshot |
+| `backup-before-rag` | Pre-RAG backup | 🗄️ Archive |
+| `master` | Initial setup | 🗄️ Archive |
+
+> **👉 Please review the `deploy/s3-cloudfront` branch.** It contains all implemented features, the AWS S3+CloudFront deployment, and the latest bug fixes.
+
+---
+
 ## Live Demo
 
 | Environment | URL |
@@ -38,7 +51,7 @@ KrishiRakshak is a **Progressive Web App** that delivers AI-powered agricultural
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 1 | **Voice Safety Q&A** | Ask farming safety questions by voice. AI responds using RAG (17+ official govt docs from ICAR, FSSAI, NDMA, Insecticides Act, NFSM). Green verified badge shows source document and confidence %. Domain-restricted to agriculture only. |
+| 1 | **Voice Safety Q&A** | Ask farming safety questions by voice. AI responds using RAG (17+ official govt docs from ICAR, FSSAI, NDMA, Insecticides Act, NFSM). Green verified badge shows source document and confidence %. Domain-restricted to agriculture only. Includes farm safety emergency coverage (snake bites, pesticide poisoning, heat stroke, machinery accidents, etc.). |
 | 2 | **Hazard Detection** | Take a photo or upload an image. Rekognition identifies objects, Bedrock analyzes hazards, and results show bilingual severity cards (CRITICAL / HIGH / MEDIUM / LOW). 12 hardcoded fallback patterns for offline. |
 | 3 | **JHA Safety Checklists** | 8 pre-built Job Hazard Analysis templates: Pesticide, Tractor, Harvesting, Irrigation, Chemical Storage, Livestock, Electrical, Heat Stress. Each with 10 bilingual steps, PPE badges, progress tracking, and Polly read-aloud. |
 | 4 | **User Profile** | Name, state, district, primary crop, farm size, and language preference. Personalizes homepage greeting and crop-specific safety tips. Stored in localStorage for offline persistence. |
@@ -127,6 +140,7 @@ KrishiRakshak uses **Bedrock Knowledge Bases** for Retrieval-Augmented Generatio
   - NFSM (National Food Security Mission)
 - **Retrieval**: Top-5 passages with confidence score > 0.4
 - **Domain Restriction**: System prompt constrains AI to agricultural safety only
+- **Farm Safety Emergencies**: Explicitly covers snake bites, scorpion stings, pesticide poisoning, heat stroke, machinery accidents, electrocution, drowning, and chemical burns — always provides first aid steps
 - **Verified Badge**: Green badge shows source document name and confidence % when answer comes from RAG
 
 ---
@@ -161,6 +175,7 @@ KrishiRakshak uses **Bedrock Knowledge Bases** for Retrieval-Augmented Generatio
 ```bash
 git clone https://github.com/Sameer786/krishirakshak-ai.git
 cd krishirakshak-ai
+git checkout deploy/s3-cloudfront
 npm install
 ```
 
@@ -188,15 +203,10 @@ Open **http://localhost:5173** on your phone or browser.
 
 ## Deployment
 
-### Option 1: Vercel (main branch)
+### Primary: AWS S3 + CloudFront (`deploy/s3-cloudfront` branch)
 
-- **URL**: https://krishirakshak-ai.vercel.app
-- **Branch**: `main` (auto-deploys on push)
-- Set env vars in Vercel dashboard: `VITE_API_GATEWAY_URL`, `VITE_DEMO_MODE=false`
-
-### Option 2: AWS S3 + CloudFront (deploy/s3-cloudfront branch)
-
-- **URL**: https://d2e3izstdqba08.cloudfront.net
+- **URL**: **https://d2e3izstdqba08.cloudfront.net**
+- **Branch**: `deploy/s3-cloudfront` ← **This is the primary branch with all features**
 - **S3 Bucket**: `krishirakshak-frontend` (ap-south-1)
 - **CloudFront**: `E71T5EYFH0HUG`
 
@@ -208,6 +218,13 @@ git checkout deploy/s3-cloudfront
 The script builds with production env vars, syncs to S3, sets cache headers, and invalidates CloudFront.
 
 > See [docs/AWS_S3_CLOUDFRONT_SETUP.md](./docs/AWS_S3_CLOUDFRONT_SETUP.md) for full setup details.
+
+### Secondary: Vercel (main branch — older snapshot)
+
+- **URL**: https://krishirakshak-ai.vercel.app
+- **Branch**: `main` (auto-deploys on push)
+- Set env vars in Vercel dashboard: `VITE_API_GATEWAY_URL`, `VITE_DEMO_MODE=false`
+- **Note**: The `main` branch may not include all the latest features. Use `deploy/s3-cloudfront` for the complete experience.
 
 ### Backend (shared by both frontends)
 
@@ -232,11 +249,21 @@ The script builds with production env vars, syncs to S3, sets cache headers, and
 
 ---
 
+## Documentation
+
+- [Implementation Diagrams (Mermaid)](./docs/IMPLEMENTATION_DIAGRAM.md) — 12 diagrams covering system architecture, AWS services, data flows, component tree, RAG pipeline, and more
+- [AWS S3 + CloudFront Setup](./docs/AWS_S3_CLOUDFRONT_SETUP.md) — Full deployment guide
+- [Project Architecture](./docs/PROJECT_ARCHITECTURE.md) — Detailed technical architecture
+
+---
+
 ## Team
+
+**Team Gwonder**
 
 **Ghazi Anwer** — GM-IT, Safe Lanes Consultants | 20+ years in IT & Safety | CISM, CEH certified
 
-Built for the **AWS AI for Bharat Hackathon** by Team KrishiRakshak.
+Built for the **AWS AI for Bharat Hackathon** by Team Gwonder.
 
 ---
 
