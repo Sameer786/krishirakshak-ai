@@ -334,7 +334,8 @@ krishirakshak-ai/
 
 **Team Gwonder**
 
-**Ghazi Anwer** — GM-IT, Safe Lanes Consultants | 20+ years in IT & Safety | CISM, CEH certified
+- Ghazi Anwer
+- Tanu Priya
 
 Built for the **AWS AI for Bharat Hackathon** by Team Gwonder.
 
