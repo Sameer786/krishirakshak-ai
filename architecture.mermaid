@@ -1,79 +1,71 @@
 graph TB
-    subgraph "Mobile Client - React Native Android"
-        UI[User Interface Layer]
-        UI --> Voice[Voice Interface<br/>10+ Regional Languages]
-        UI --> Camera[Camera Hazard<br/>Detection]
-        UI --> JHA[JHA Templates<br/>& Checklists]
-        UI --> Compliance[Compliance<br/>Tracker]
-        
-        Voice --> AppService[Application Service Layer]
-        Camera --> AppService
-        JHA --> AppService
-        Compliance --> AppService
-        
-        AppService --> VoiceProc[Voice Processor<br/>DeepSpeech + eSpeak]
-        AppService --> HazardAnalyzer[Hazard Analyzer<br/>MobileNetV3]
-        AppService --> QueryEngine[Query Engine<br/>RAG + Cached Embeddings]
-        AppService --> RecEngine[Recommendation<br/>Engine]
-        
-        VoiceProc --> LocalData[Local Data Layer]
-        HazardAnalyzer --> LocalData
-        QueryEngine --> LocalData
-        RecEngine --> LocalData
-        
-        LocalData --> SQLite[(SQLite DB<br/>User Data)]
-        LocalData --> Models[Cached ML Models<br/>~50MB]
-        LocalData --> Embeddings[Embedding Cache<br/>~30MB]
-        LocalData --> KG[Knowledge Graph<br/>Cache ~5MB]
-        
-        LocalData --> SyncEngine[Bidirectional<br/>Sync Engine]
+    subgraph "User Device - Progressive Web App"
+        UI[User Interface<br/>React 19.2 + Vite 7.3 + Tailwind CSS v4]
+        UI --> VoiceQA[Voice Safety Q&A<br/>Web Speech API STT]
+        UI --> HazardCam[Hazard Detection<br/>Camera / Upload]
+        UI --> JHA[JHA Safety Checklists<br/>8 Templates]
+        UI --> Profile[User Profile<br/>& Govt Schemes]
+
+        VoiceQA --> Services[Service Layer<br/>Axios HTTP Client]
+        HazardCam --> Services
+        JHA --> Services
+        Profile --> LocalStore[localStorage<br/>Offline Persistence]
+
+        Services --> TTS[Text-to-Speech<br/>Polly Primary + Browser Fallback]
+        Services --> ActivityTracker[Activity Tracker<br/>Recent Activity Logging]
+
+        UI --> SW[Service Worker<br/>Offline Caching + PWA Install]
     end
-    
-    SyncEngine -->|When Online| AppSync[AWS AppSync<br/>GraphQL + Offline]
-    
-    subgraph "AWS Cloud Services"
-        AppSync --> Lambda[Lambda Functions]
-        
-        Lambda --> SyncHandler[Sync Handler]
-        Lambda --> QueryProc[Query Processor]
-        Lambda --> ModelUpdater[Model Updater]
-        Lambda --> Analytics[Analytics<br/>Aggregator]
-        
-        SyncHandler --> DynamoDB[(DynamoDB<br/>User Data)]
-        QueryProc --> Bedrock[AWS Bedrock<br/>Claude 3 Haiku<br/>LLM/RAG]
-        QueryProc --> Kendra[Amazon Kendra<br/>RAG Index]
-        QueryProc --> Neptune[(AWS Neptune<br/>Knowledge Graph)]
-        
-        ModelUpdater --> S3[Amazon S3<br/>Models & Assets]
-        
-        Analytics --> CloudWatch[CloudWatch<br/>Monitoring]
-        
-        HazardAnalyzer -.->|Complex Cases| Rekognition[Amazon<br/>Rekognition]
-        VoiceProc -.->|Model Updates| Transcribe[Amazon<br/>Transcribe]
-        VoiceProc -.->|Phrase Cache| Polly[Amazon<br/>Polly]
-        
-        S3 --> CloudFront[CloudFront CDN<br/>India Edge]
-        CloudFront -.->|Model Downloads| Models
-        
-        Neptune --> GraphCache[Graph Subgraph<br/>Export]
-        GraphCache -.-> KG
-        
-        Kendra --> EmbeddingExport[Top 1000<br/>Embeddings]
-        EmbeddingExport -.-> Embeddings
+
+    Services -->|HTTPS| CloudFront[Amazon CloudFront<br/>CDN + HTTPS + Gzip<br/>India Edge Locations]
+
+    subgraph "AWS Cloud - ap-south-1 Mumbai"
+        CloudFront --> S3[Amazon S3<br/>krishirakshak-frontend<br/>Static PWA Hosting]
+
+        CloudFront -->|API Requests| APIGW[Amazon API Gateway<br/>REST API + CORS]
+
+        APIGW -->|POST /ask-safety-question| LambdaQA[Lambda: ask-safety<br/>Node.js 18 ES Modules]
+        APIGW -->|POST /analyze-hazards| LambdaHazard[Lambda: analyze-hazards<br/>Node.js 18 ES Modules]
+        APIGW -->|POST /text-to-speech| LambdaTTS[Lambda: text-to-speech<br/>Node.js 18 ES Modules]
+
+        LambdaQA --> KB[Bedrock Knowledge Bases<br/>KB: PIMCAVAB8S<br/>17+ Official Documents]
+        KB --> OpenSearch[OpenSearch Serverless<br/>Vector Store]
+        KB --> TitanEmbed[Titan Text Embeddings V2<br/>Document Vectors]
+        LambdaQA --> Bedrock[Amazon Bedrock<br/>Nova Lite apac.amazon.nova-lite-v1:0<br/>Converse API]
+
+        LambdaHazard --> Rekognition[Amazon Rekognition<br/>DetectLabels<br/>20 Labels / 50%+ Confidence]
+        LambdaHazard --> Bedrock
+
+        LambdaTTS --> Polly[Amazon Polly<br/>Hindi: Aditi Standard<br/>English: Kajal Neural]
+
+        LambdaQA --> DynamoDB[(Amazon DynamoDB<br/>krishirakshak-activity-log)]
+        LambdaHazard --> DynamoDB
+
+        LambdaQA --> CloudWatch[Amazon CloudWatch<br/>Monitoring & Logs]
+        LambdaHazard --> CloudWatch
+        LambdaTTS --> CloudWatch
     end
-    
-    subgraph "External Integration"
-        Lambda --> GovAPI[Government APIs<br/>Schemes & Weather]
-        Lambda --> AgriAPI[Agricultural APIs<br/>Market Prices]
+
+    subgraph "RAG Document Sources"
+        KB -.-> ICAR[ICAR Guidelines]
+        KB -.-> FSSAI[FSSAI Standards]
+        KB -.-> InsecticideAct[Insecticides Act 1968]
+        KB -.-> NDMA[NDMA Safety Protocols]
+        KB -.-> NFSM[NFSM Publications]
     end
-    
+
     style UI fill:#e1f5ff
-    style LocalData fill:#fff4e1
-    style SyncEngine fill:#f0e1ff
-    style AppSync fill:#e1ffe1
-    style Lambda fill:#ffe1e1
+    style Services fill:#fff4e1
+    style SW fill:#f0e1ff
+    style CloudFront fill:#e1ffe1
+    style APIGW fill:#e1ffe1
+    style LambdaQA fill:#ffe1e1
+    style LambdaHazard fill:#ffe1e1
+    style LambdaTTS fill:#ffe1e1
     style DynamoDB fill:#ffe1f0
-    style Neptune fill:#ffe1f0
     style S3 fill:#e1f0ff
     style Bedrock fill:#ffe8cc
-    style Kendra fill:#ffe8cc
+    style KB fill:#ffe8cc
+    style Rekognition fill:#ffe8cc
+    style Polly fill:#ffe8cc
+    style OpenSearch fill:#ffe8cc

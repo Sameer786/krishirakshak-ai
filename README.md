@@ -249,11 +249,84 @@ The script builds with production env vars, syncs to S3, sets cache headers, and
 
 ---
 
+## Project Structure
+
+```
+krishirakshak-ai/
+├── requirements.md              # Kiro-generated requirements (full product vision)
+├── design.md                    # Kiro-generated design (full architecture)
+├── architecture.mermaid         # Architecture diagram (Mermaid — actual implementation)
+├── README.md                    # This file
+├── index.html                   # Vite entry point
+├── package.json                 # Dependencies & scripts
+├── .env.example                 # Environment variable template
+│
+├── src/                         # Frontend source code
+│   ├── App.jsx                  # Root component with React Router
+│   ├── index.css                # Global styles + Tailwind v4 @theme
+│   ├── components/
+│   │   ├── HomePage.jsx         # Dashboard with personalized greeting
+│   │   ├── VoiceQA/             # Voice Safety Q&A (Bedrock + RAG)
+│   │   │   ├── VoiceQA.jsx      # Main chat interface
+│   │   │   ├── ChatBubble.jsx   # User/AI message bubbles
+│   │   │   ├── QuestionChips.jsx # Suggestion tags
+│   │   │   ├── ResponseCard.jsx # RAG-verified response card
+│   │   │   └── LanguageToggle.jsx
+│   │   ├── HazardDetection/     # Camera hazard detection (Rekognition)
+│   │   │   ├── HazardDetection.jsx
+│   │   │   ├── HazardResults.jsx
+│   │   │   └── BottomSheet.jsx
+│   │   ├── JHAChecklist/        # Job Hazard Analysis checklists
+│   │   │   ├── JHAChecklist.jsx
+│   │   │   └── templates.js     # 8 safety templates (bilingual)
+│   │   ├── Profile/Profile.jsx  # User profile & preferences
+│   │   ├── GovtSchemes/GovtSchemes.jsx  # Government schemes
+│   │   └── common/              # Shared UI components
+│   │       ├── Layout.jsx       # App shell + BottomNav
+│   │       ├── BottomNav.jsx    # Bottom navigation bar
+│   │       ├── Header.jsx       # Top header
+│   │       └── ...
+│   ├── hooks/                   # Custom React hooks
+│   │   ├── useSpeechRecognition.js
+│   │   ├── usePWAInstall.js
+│   │   └── useOnlineStatus.js
+│   └── services/                # API service layer
+│
+├── lambda/                      # AWS Lambda functions (Node.js 18, ES modules)
+│   ├── ask-safety-question/     # Voice Q&A — Bedrock + KB RAG + DynamoDB
+│   │   └── index.mjs
+│   ├── analyze-hazards/         # Hazard Detection — Rekognition + Bedrock
+│   │   └── index.mjs
+│   └── text-to-speech/          # TTS — Amazon Polly (Hindi + English)
+│       └── index.mjs
+│
+├── public/                      # Static assets
+│   ├── manifest.json            # PWA manifest
+│   └── sw.js                    # Service worker (offline caching)
+│
+├── scripts/
+│   └── deploy-s3.sh             # Build + S3 sync + CloudFront invalidation
+│
+└── docs/                        # Project documentation
+    ├── IMPLEMENTATION_DIAGRAM.md # 12 Mermaid diagrams
+    ├── PROJECT_ARCHITECTURE.md  # Detailed technical architecture
+    ├── AWS_S3_CLOUDFRONT_SETUP.md # Deployment guide
+    └── POLLY_SETUP.md           # Amazon Polly integration guide
+```
+
+---
+
 ## Documentation
 
-- [Implementation Diagrams (Mermaid)](./docs/IMPLEMENTATION_DIAGRAM.md) — 12 diagrams covering system architecture, AWS services, data flows, component tree, RAG pipeline, and more
-- [AWS S3 + CloudFront Setup](./docs/AWS_S3_CLOUDFRONT_SETUP.md) — Full deployment guide
-- [Project Architecture](./docs/PROJECT_ARCHITECTURE.md) — Detailed technical architecture
+| Document | Description |
+|----------|-------------|
+| [requirements.md](./requirements.md) | Kiro-generated requirements — full product vision with 12 user stories |
+| [design.md](./design.md) | Kiro-generated design — complete system architecture and design decisions |
+| [architecture.mermaid](./architecture.mermaid) | Architecture diagram (Mermaid) — actual implemented AWS architecture |
+| [Implementation Diagrams](./docs/IMPLEMENTATION_DIAGRAM.md) | 12 Mermaid diagrams: system architecture, AWS services, data flows, RAG pipeline |
+| [Project Architecture](./docs/PROJECT_ARCHITECTURE.md) | Detailed technical architecture document |
+| [AWS S3 + CloudFront Setup](./docs/AWS_S3_CLOUDFRONT_SETUP.md) | Full deployment guide |
+| [Polly TTS Setup](./docs/POLLY_SETUP.md) | Amazon Polly integration guide |
 
 ---
 
