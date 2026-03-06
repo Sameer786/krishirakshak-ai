@@ -320,7 +320,7 @@ export default function VoiceQA() {
       <div className="chat-messages">
         {/* Empty state: welcome + chips */}
         {history.length === 0 && status !== 'thinking' && (
-          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center w-full max-w-full overflow-x-hidden">
             <div className="text-4xl mb-3">🌾</div>
             <p className="text-sm font-medium text-gray-700 mb-1">
               {isHindi ? 'नमस्ते! मैं KrishiRakshak हूँ' : 'Hello! I am KrishiRakshak'}

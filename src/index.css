@@ -155,6 +155,7 @@ main:has(> .chat-container) {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px 0;
   display: flex;
   flex-direction: column;

@@ -1,6 +1,6 @@
 export default function QuestionChips({ questions, onSelect }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="flex gap-2 overflow-x-auto overflow-y-hidden pb-1 w-full max-w-full scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
       {questions.map((q) => (
         <button
           type="button"
