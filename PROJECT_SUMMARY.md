@@ -45,8 +45,9 @@ All serverless, all in ap-south-1 (Mumbai), auto-scaling from 10 to 10 million u
 - **GitHub:** https://github.com/Sameer786/krishirakshak-ai
 
 ## Team
-**Ghazi Anwer** — General Manager IT, Safe Lanes Consultants Pte Ltd
-20+ years enterprise architecture | Maritime safety systems (SAIL ERP, 200+ vessels) | CISM, CEH certified | AWS infrastructure expertise
+**Team Gwonder**
+- Ghazi Anwer
+- Tanu Priya
 
 ## Future Roadmap
 React Native mobile app with offline ML models | 10+ regional languages | Knowledge Graph (Neptune) for crop-pest-season relationships | Compliance tracking with PDF export | Weather-based proactive safety alerts | IoT farm sensor integration | Expansion to Bangladesh, Nepal, and Africa
